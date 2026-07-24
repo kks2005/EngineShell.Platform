@@ -252,3 +252,7 @@ This solution is currently an architectural prototype. When contributing:
 3. Register the selected adapter in the client composition root.
 4. Add tests in the matching test layer.
 5. Keep package versions centralized.
+
+## Notes
+
+Built with assistance from AI coding tools for scaffolding and documentation; architecture and design decisions are my own.
