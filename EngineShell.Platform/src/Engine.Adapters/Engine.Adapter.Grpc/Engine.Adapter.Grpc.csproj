@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\Engine.Contracts\Engine.Contracts.csproj" />
+    <None Include="EngineGrpc.proto" />
+  </ItemGroup>
+</Project>
