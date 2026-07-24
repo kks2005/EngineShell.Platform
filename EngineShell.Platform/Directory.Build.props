@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework Condition="'$(MSBuildProjectName)' != 'MauiClient' and '$(TargetFramework)' == '' and '$(TargetFrameworks)' == ''">net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
+   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MSTest" />
+    <PackageReference Include="Moq" />
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+
+</Project>
