@@ -1,6 +1,8 @@
-# ClientAgnostic
+# Platform Architecture Overview
 
-ClientAgnostic is an experimental .NET 9 solution for building multiple user-interface clients on top of a shared application and presentation layer. Native or remote processing engines are isolated behind contracts and adapter projects, allowing clients to select an engine integration without coupling UI code to its implementation.
+ClientAgnosticEngine is an experimental .NET 9 solution demonstrating a modular, interface-driven architecture for building multiple UI clients on top of a shared application and presentation layer.
+
+Processing engines — native, managed, or otherwise — are isolated behind contracts and adapter projects, so a client never couples to a specific engine implementation. The same application core can drive WPF, a headless console client, or other UI framework (WinUI, MAUI, Blazor Hybrid), while the engine integration underneath — P/Invoke, C++/CLI, or a test double — is swapped entirely at the composition root.
 
 > This repository is under active development. Several clients and adapters are currently scaffolds rather than production-ready implementations.
 
@@ -19,6 +21,90 @@ Clients
        +------------+-------------+-------------+
        |            |             |             |
     P/Invoke      C++/CLI        gRPC        Simulator
+```
+```
+Clients (WPF / WinUI / MAUI / Headless)
+        ↓
+Presentation
+        ↓
+Application
+        ↓
+Engine.Contracts
+        ↑
+Native Engine (external)
+```
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                 CLIENT LAYERS                                │
+│                                                                              │
+│   WPF Client        WinUI Client        MAUI Client        Headless Client   │
+│   - Views/XAML      - Views/XAML        - Pages/XAML       - Console Runner  │
+│   - Resources       - Resources         - Resources        - DI Setup        │
+│   - Bootstrap       - Bootstrap         - Bootstrap        - Workflow        │
+└───────────────────────────────▲──────────────────────────────────────────────┘
+                                │
+                                │ depends on
+                                │
+┌────────────────────────────────┴─────────────────────────────────────────────┐
+│                               PRESENTATION LAYER                             │
+│                               (Shared ViewModels)                            │
+│                                                                              │
+│   ShellViewModel     HeaderViewModel  ScreensViewModel   ImportViewModel     │
+│   GeneralViewModel   FooterViewModel  RenderViewModel                        │
+│                                                                              │
+│   Depends on: Application Services                           │
+└───────────────────────────────▲──────────────────────────────────────────────┘
+                                │
+                                │ depends on
+                                │
+┌───────────────────────────────┴──────────────────────────────────────────────┐
+│                               APPLICATION LAYER                               │
+│                               (Use‑Case Logic)                                │
+│                                                                              │
+│   Interfaces:                                                                 │
+│     IEngineService, INavigationService, IAppStatusService                     │
+│     IAppEventService, ISettingsService, IDialogService                        │
+│                                                                              │
+│   Services:                                                                   │
+│     EngineService, NavigationService, AppStatusService                        │
+│     AppEventService, SettingsService                                          │
+│                                                                              │
+│   Depends on:  Engine.Contracts                                   │
+└───────────────────────────────▲──────────────────────────────────────────────┘
+                                │
+                                │ depends on
+                                │                                
+┌───────────────────────────────┴──────────────────────────────────────────────┐
+│                               ENGINE CONTRACTS                                │
+│                               (Engine Protocol)                               │
+│                                                                              │
+│   IEngine, EngineRequest, EngineResult, EngineProgress                        │
+│   EngineEventArgs, EngineOperation enum                                       │
+│                                                                              │
+│   Pure C# — no native code, no UI, no infrastructure                          │
+└───────────────────────────────▲──────────────────────────────────────────────┘
+                                │
+                                │ implemented by
+                                │
+┌───────────────────────────────┴──────────────────────────────────────────────┐
+│                               INFRASTRUCTURE LAYER                           │
+│                           (Adapters)                                         │ 
+│                                                                              │
+│   Engine Adapters:                                                           │
+│     PInvokeEngineAdapter                                                     │
+│     CppCliEngineAdapter                                                      │
+│     GrpcEngineAdapter                                                        │
+│     SimulatorEngineAdapter                                                   |
+└───────────────────────────────▲──────────────────────────────────────────────┘
+                                │
+                                │ calls into
+                                │
+┌───────────────────────────────┴──────────────────────────────────────────────┐
+│                               NATIVE ENGINE (C++)                              │
+│                                                                              │
+│   Core processing, native callbacks, progress events, error events            │
+│   Engine lifecycle, memory management                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 The dependency direction points inward:
@@ -108,8 +194,23 @@ dotnet build src/Clients/HeadlessClient/HeadlessClient.csproj
 The WinUI client is configured as an unpackaged, self-contained `win-x64` application.
 
 ## Test
+The solution follows a test-pyramid strategy: keep most coverage in fast unit tests and use progressively fewer tests at the broader, slower levels.
 
-Run all test projects in the solution:
+```text
+              UI              Few, slowest
+           Headless
+         Integration
+            Unit              Many, fastest
+```
+
+| Test layer | Purpose |
+| --- | --- |
+| **Unit** | Tests Application and Presentation logic in isolation. These tests should be fast, deterministic, and make up most of the test suite. |
+| **Integration** | Verifies that multiple components, adapters, serialization boundaries, or infrastructure concerns work together. |
+| **Headless** | Exercises complete application workflows through the headless client without launching a graphical interface. |
+| **UI** | Validates critical user journeys through WPF UI automation with FlaUI. These tests are the slowest and require an interactive Windows desktop session. |
+
+Use UI tests only for high-value user journeys that cannot be covered reliably at a lower level. Business rules and view-model behavior should normally be tested in the Unit projects.
 
 ```powershell
 dotnet test ClientAgnostic.sln
