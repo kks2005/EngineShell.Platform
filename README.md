@@ -226,6 +226,45 @@ dotnet test tests/UI/Wpf.UiTests.csproj
 
 The WPF UI test project uses FlaUI. UI automation tests must run on an interactive Windows desktop session.
 
+### Code coverage
+
+Collect and merge coverage from the Application unit, Presentation unit,
+Integration, Headless, and WPF UI test projects:
+
+```powershell
+.\scripts\coverage.ps1
+```
+
+The script restores the repository-local coverage tools, runs each test layer,
+and writes three reports:
+
+```text
+artifacts/
+├── coverage/
+│   ├── application-unit/
+│   ├── presentation-unit/
+│   ├── integration/
+│   ├── headless/
+│   └── ui/
+├── coverage-report/
+│   └── index.html
+├── ui-coverage-report/
+│   └── index.html
+└── overall-coverage-report/
+    └── index.html
+```
+
+`coverage-report` is the fast non-UI baseline, `ui-coverage-report` contains
+code exercised through the WPF process, and `overall-coverage-report` merges
+every test layer without double-counting production lines.
+
+WPF UI coverage requires an interactive Windows desktop. Generate only the
+non-UI report in a non-interactive environment:
+
+```powershell
+.\scripts\coverage.ps1 -SkipUi
+```
+
 ## Dependency management
 
 Shared compiler settings are defined in [`Directory.Build.props`](Directory.Build.props). NuGet versions are managed centrally in [`Directory.Packages.props`](Directory.Packages.props), so individual project files normally contain versionless `PackageReference` entries.
