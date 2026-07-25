@@ -5,15 +5,24 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:WpfClient.Views"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow"
+        Height="450"
+        Width="800"
+        AutomationProperties.AutomationId="Shell.MainWindow">
     <Grid ShowGridLines="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>        
-            <ContentControl Content="{Binding Header}" Grid.Row="0" />
-            <ContentControl Content="{Binding CurrentViewModel}" Grid.Row="1"/>
-            <ContentControl Content="{Binding Footer}" Grid.Row="2"/>      
+            <ContentControl Content="{Binding Header}"
+                            Grid.Row="0"
+                            AutomationProperties.AutomationId="Shell.HeaderContent" />
+            <ContentControl Content="{Binding CurrentViewModel}"
+                            Grid.Row="1"
+                            AutomationProperties.AutomationId="Shell.MainContent" />
+            <ContentControl Content="{Binding Footer}"
+                            Grid.Row="2"
+                            AutomationProperties.AutomationId="Shell.FooterContent" />
     </Grid>
 </Window>

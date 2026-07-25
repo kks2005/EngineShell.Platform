@@ -14,7 +14,6 @@ public static class DIRegistration
         // engine services and adapters
         services.AddSingleton<IEngineEventBus, EngineEventBus>();
         services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
-        services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
         services.AddSingleton<IProcessingService, ProcessingService>();
 
         // application services

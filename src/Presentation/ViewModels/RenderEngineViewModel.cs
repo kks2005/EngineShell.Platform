@@ -5,6 +5,9 @@ using EngineShell.Application.Interfaces;
 
 namespace Presentation.ViewModels;
 
+/// <summary>
+/// Represents the ViewModel for the Render Engine functionality, handling user interactions and data binding for the associated view.
+/// </summary>
 public partial class RenderEngineViewModel : ViewModelBase
 {
     private readonly IProcessingService _processingService;
@@ -16,11 +19,10 @@ public partial class RenderEngineViewModel : ViewModelBase
     private string? _inputPath;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressText))]
     private int _progress;
 
-
     public string ProgressText => $"{Progress}%";
-    [NotifyPropertyChangedFor(nameof(ProgressText))]
 
     [ObservableProperty]
     private string _status = "Ready";
@@ -95,6 +97,8 @@ public partial class RenderEngineViewModel : ViewModelBase
         if (disposing)
         {
             _subscription.Dispose();
+            // Dispose of other managed resources if needed
+
         }
         base.Dispose(disposing);
     }

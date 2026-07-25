@@ -9,6 +9,7 @@
     <!-- Horizontal header -->
     <ListBox ItemsSource="{Binding NavigationItems}"
              SelectedItem="{Binding SelectedNavigationItem}"
+             AutomationProperties.AutomationId="Header.Navigation"
              BorderThickness="0"
              DockPanel.Dock="Top"
              Padding="10"
@@ -51,6 +52,8 @@
         <!-- Selected item styling -->
         <ListBox.ItemContainerStyle>
             <Style TargetType="ListBoxItem">
+                <Setter Property="AutomationProperties.AutomationId"
+                        Value="{Binding Title, StringFormat=Header.{0}Item}"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Margin" Value="10,0,10,0"></Setter>

@@ -12,20 +12,24 @@
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
             <Button Content="Load Screens"
                     Command="{Binding LoadScreensCommand}"
+                    AutomationProperties.AutomationId="Screens.LoadButton"
                     Margin="0,0,8,0"/>
 
             <Button Content="Refresh"
                     Command="{Binding RefreshCommand}"
+                    AutomationProperties.AutomationId="Screens.RefreshButton"
                     Margin="0,0,8,0"/>
 
             <TextBlock Text="{Binding IsBusy, StringFormat=Busy: {0}}"
+                       AutomationProperties.AutomationId="Screens.BusyText"
                        VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- Screens List -->
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding Screens}"
-                 SelectedItem="{Binding SelectedScreen}">
+                 SelectedItem="{Binding SelectedScreen}"
+                 AutomationProperties.AutomationId="Screens.List">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal" Margin="4">

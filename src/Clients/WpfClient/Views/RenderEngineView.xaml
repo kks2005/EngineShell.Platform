@@ -8,49 +8,49 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <StackPanel>
         <TextBlock
-        AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.TitleText}"
+        AutomationProperties.AutomationId="RenderEngine.TitleText"
         Text="Processing"
         FontSize="16"
         FontWeight="SemiBold" />
 
         <StackPanel
         Margin="0,16,0,0"
-        AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProcessingPanel}">
+        AutomationProperties.AutomationId="RenderEngine.ProcessingPanel">
 
             <StackPanel
             Orientation="Horizontal"
             Margin="0,0,0,16"
-            AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProcessingCommandPanel}">
+            AutomationProperties.AutomationId="RenderEngine.CommandPanel">
 
                 <Button
                 MinWidth="130"
                 Margin="0,0,8,0"
                 Content="{Binding LoadButtonText, ElementName=Root, FallbackValue=Load}"
                 Command="{Binding LoadCommand}"
-                AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.LoadButton}" />
+                AutomationProperties.AutomationId="RenderEngine.LoadButton" />
 
                 <Button
                 MinWidth="90"
                 Margin="0,0,8,0"
                 Content="Process"
                 Command="{Binding ProcessCommand}"
-                AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProcessButton}" />
+                AutomationProperties.AutomationId="RenderEngine.ProcessButton" />
 
                 <Button
                 MinWidth="80"
                 Content="Cancel"
                 Command="{Binding CancelCommand}"
-                AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.CancelButton}" />
+                AutomationProperties.AutomationId="RenderEngine.CancelButton" />
             </StackPanel>
 
             <TextBlock
-            Text="{Binding StatusText}"
+            Text="{Binding Status}"
             TextWrapping="Wrap"
-            AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.StatusText}" />
+            AutomationProperties.AutomationId="RenderEngine.StatusText" />
 
             <Grid
             Margin="0,16,0,0"
-            AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProgressPanel}">
+            AutomationProperties.AutomationId="RenderEngine.ProgressPanel">
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -62,7 +62,7 @@
                 Minimum="0"
                 Maximum="100"
                 Value="{Binding Progress}"
-                AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProgressBar}" />
+                AutomationProperties.AutomationId="RenderEngine.ProgressBar" />
 
                 <TextBlock
                 Grid.Column="1"
@@ -70,23 +70,23 @@
                 VerticalAlignment="Center"
                 FontWeight="SemiBold"
                 Text="{Binding ProgressText}"
-                AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.ProgressText}" />
+                AutomationProperties.AutomationId="RenderEngine.ProgressText" />
             </Grid>
         </StackPanel>
 
         <TextBlock
         Margin="0,16,0,0"
         Text="{Binding RawEngineEventCount, StringFormat=Native events: {0}}"
-        AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.RawEngineEventCountText}" />
+        AutomationProperties.AutomationId="RenderEngine.RawEngineEventCountText" />
 
         <TextBlock
         Margin="0,4,0,0"
         Text="{Binding DisplayedEngineEventCount, StringFormat=UI event updates: {0}}"
-        AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.DisplayedEngineEventCountText}" />
+        AutomationProperties.AutomationId="RenderEngine.DisplayedEngineEventCountText" />
 
         <TextBlock
         Margin="0,4,0,0"
         Text="{Binding LastDisplayedEngineEventText}"
-        AutomationProperties.AutomationId="{Binding AutomationIdPrefix, ElementName=Root, StringFormat={}{0}.LastDisplayedEngineEventText}" />
+        AutomationProperties.AutomationId="RenderEngine.LastDisplayedEngineEventText" />
     </StackPanel>
 </UserControl>
