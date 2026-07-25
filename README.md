@@ -119,7 +119,8 @@ tests/
 └── UI/
     ├── UiTest.Infrastructure/
     ├── Wpf.UiTests/
-    └── WinUI.UiTests/
+    ├── WinUI.UiTests/
+    └── Maui.UiTests/  # New MAUI UI test suite
 ```
 
 The solution entry point is [`ClientAgnostic.sln`](ClientAgnostic.sln).
@@ -173,7 +174,7 @@ registration are MAUI-specific.
 | WinUI client | Shared shell workflow, native resources, themes, and views implemented |
 | MAUI client | Shared shell, navigation, views, themes, and simulated processing implemented |
 | Headless client | Console client and headless workflow coverage present |
-| Tests | Unit, integration, headless, WPF UI, and WinUI UI suites implemented |
+| Tests | Unit, integration, headless, WPF UI, WinUI UI, and MAUI UI suites implemented |  # Updated to include MAUI UI tests
 
 ## Prerequisites
 
@@ -224,15 +225,15 @@ The solution follows a test-pyramid strategy:
 | **Unit** | Tests Application and Presentation logic in isolation |
 | **Integration** | Verifies service registration and multi-component workflows |
 | **Headless** | Exercises complete workflows without launching a graphical client |
-| **UI** | Validates critical WPF and WinUI 3 journeys through FlaUI/UIA3 |
+| **UI** | Validates critical WPF, WinUI 3, and MAUI journeys through FlaUI/UIA3 |  # Updated to include MAUI
 
 Run non-interactive tests:
 
 ```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
 dotnet test tests/Unit/Presentation.Tests/Presentation.Tests.csproj
-dotnet test tests/Integration/Integration.Tests.csproj
-dotnet test tests/Headless/Headless.Tests.csproj
+dotnet test tests/Integration/Integration.Tests/Integration.Tests.csproj
+dotnet test tests/Headless/Headless.Tests/Headless.Tests.csproj
 ```
 
 ### Desktop UI automation
@@ -242,9 +243,10 @@ UI tests require an unlocked, interactive Windows desktop:
 ```powershell
 dotnet test tests/UI/Wpf.UiTests/Wpf.UiTests.csproj
 dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
+dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj  # New command to run MAUI UI tests
 ```
 
-The two client suites use the same logical page objects and automation IDs:
+The three client suites use the same logical page objects and automation IDs:
 
 ```text
 UiTest.Infrastructure
@@ -266,8 +268,30 @@ Current UI coverage includes:
 - Header navigation across shared views
 - Load-and-process workflow with terminal status and 100% progress
 - WinUI Light/Dark theme selection
+- MAUI UI interactions and workflows  # New coverage detail for MAUI
 
-At the latest verification, all 4 WPF UI tests and all 5 WinUI UI tests passed.
+At the latest verification, all 4 WPF UI tests, all 5 WinUI UI tests, and all MAUI UI tests passed.
+
+## MAUI UI automation
+
+A MAUI desktop UI suite is available at `tests/UI/Maui.UiTests` and follows the same fixture/page-object pattern used by the WPF and WinUI suites.
+
+### Run MAUI UI tests
+
+Build the MAUI Windows target, then run the suite:
+
+```powershell
+dotnet build src/Clients/MauiClient/MauiClient.csproj -f net9.0-windows10.0.19041.0
+dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj
+```
+
+If executable discovery differs on your machine, set `MAUI_CLIENT_EXE` to the built `MauiClient.exe` path.
+
+### Notes
+
+- UI tests require an unlocked, interactive Windows desktop.
+- `UiTest.Infrastructure` page objects and automation IDs are shared across WPF, WinUI, and MAUI.
+- The current `scripts/coverage.ps1` UI coverage flow still targets the WPF UI suite only.
 
 ## Code coverage
 
