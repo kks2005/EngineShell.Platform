@@ -296,6 +296,10 @@ non-UI report in a non-interactive environment:
 
 WinUI client-process coverage is not yet included.
 
+code-coverage report
+<img width="1542" height="786" alt="image" src="https://github.com/user-attachments/assets/d2a03e91-8af5-4f7d-a694-3e676676a2a2" />
+
+
 ## Dependency management
 
 Shared compiler settings are defined in
