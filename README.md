@@ -8,7 +8,7 @@ Processing engines — native, managed, or otherwise — are isolated behind con
 
 ## What this POC demonstrates
 
-- Shared MVVM presentation logic across WPF and WinUI 3
+- Shared MVVM presentation logic across WPF, WinUI 3, and .NET MAUI
 - Client-specific XAML, resources, startup, and dependency injection
 - Replaceable processing engines behind `IProcessingEngine`
 - Reactive engine events and progress reporting
@@ -146,6 +146,20 @@ includes:
 The WPF and WinUI clients intentionally share view models and logical behavior,
 not framework-specific controls.
 
+### .NET MAUI
+
+The MAUI client reuses the same shell, navigation, and feature view models as
+the Windows desktop clients. Its platform layer stays small:
+
+- MAUI `ContentView` implementations for Header, Footer, General, Screens, and
+  Render Engine
+- A single view host that maps shared view models to MAUI views
+- Light and Dark theme selection in the persistent footer
+- The cross-platform simulator registered behind `IProcessingEngine`
+
+Only the XAML controls, theme interaction, view mapping, and dependency
+registration are MAUI-specific.
+
 ## Current status
 
 | Area | Status |
@@ -154,10 +168,10 @@ not framework-specific controls.
 | P/Invoke adapter | Implements the processing contract with a managed progress simulation; native calls remain future work |
 | C++/CLI adapter | Scaffold with native source files |
 | gRPC adapter | Scaffold with a protocol file |
-| Simulator adapter | Scaffold |
+| Simulator adapter | Cross-platform progress and cancellation workflow implemented |
 | WPF client | Shared shell, navigation, views, and processing workflow implemented |
 | WinUI client | Shared shell workflow, native resources, themes, and views implemented |
-| MAUI client | Multi-target application scaffold |
+| MAUI client | Shared shell, navigation, views, themes, and simulated processing implemented |
 | Headless client | Console client and headless workflow coverage present |
 | Tests | Unit, integration, headless, WPF UI, and WinUI UI suites implemented |
 
@@ -178,6 +192,7 @@ Build the implemented Windows clients:
 ```powershell
 dotnet build src/Clients/WpfClient/WpfClient.csproj
 dotnet build src/Clients/WinUIClient/WinUIClient.csproj
+dotnet build src/Clients/MauiClient/MauiClient.csproj -f net9.0-windows10.0.19041.0
 ```
 
 Build the complete solution when all required platform workloads are installed:
@@ -187,10 +202,9 @@ dotnet restore ClientAgnostic.sln
 dotnet build ClientAgnostic.sln
 ```
 
-Other clients can be built independently:
+The headless client can be built independently:
 
 ```powershell
-dotnet build src/Clients/MauiClient/MauiClient.csproj
 dotnet build src/Clients/HeadlessClient/HeadlessClient.csproj
 ```
 

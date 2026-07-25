@@ -1,8 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- POC fast mode: build only host platform -->
+		<FastPocBuild>true</FastPocBuild>
+
+		<!-- Fast local build -->
+		<TargetFrameworks Condition="'$(FastPocBuild)' == 'true' and $([MSBuild]::IsOSPlatform('windows'))">net9.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks Condition="'$(FastPocBuild)' == 'true' and $([MSBuild]::IsOSPlatform('osx'))">net9.0-maccatalyst</TargetFrameworks>
+
+		<!-- Full build (when FastPocBuild=false) -->
+		<TargetFrameworks Condition="'$(FastPocBuild)' != 'true'">net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+		<TargetFrameworks Condition="'$(FastPocBuild)' != 'true' and $([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net9.0-tizen</TargetFrameworks> -->
 
@@ -59,7 +67,8 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Application\Application.csproj" />
-	  <ProjectReference Include="..\..\Engine.Adapters\Engine.Adapter.Simulator\Engine.Adapter.Simulator.csproj" />
+	  <ProjectReference Include="..\..\Engine.Adapters\Engine.Adapter.PInvoke\Engine.Adapter.PInvoke.csproj" />
+	  <ProjectReference Include="..\..\Presentation\Presentation.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

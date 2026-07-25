@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="Clients.Maui.Views.GeneralView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <VerticalStackLayout MaximumWidthRequest="480" HorizontalOptions="Start" Spacing="12">
+        <Label AutomationId="General.TitleText" Text="General" Style="{StaticResource Headline}" />
+        <Label Text="General settings will be available here." />
+    </VerticalStackLayout>
+</ContentView>
