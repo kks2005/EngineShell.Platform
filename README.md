@@ -1,10 +1,21 @@
-# Platform Architecture Overview
+# EngineShell.Platform
 
 ClientAgnosticEngine is an experimental .NET 9 solution demonstrating a modular, interface-driven architecture for building multiple UI clients on top of a shared application and presentation layer.
 
 Processing engines — native, managed, or otherwise — are isolated behind contracts and adapter projects, so a client never couples to a specific engine implementation. The same application core can drive WPF, a headless console client, or other UI framework (WinUI, MAUI, Blazor Hybrid), while the engine integration underneath — P/Invoke, C++/CLI, or a test double — is swapped entirely at the composition root.
 
 > This repository is under active development. Several clients and adapters are currently scaffolds rather than production-ready implementations.
+
+## What this POC demonstrates
+
+- Shared MVVM presentation logic across WPF and WinUI 3
+- Client-specific XAML, resources, startup, and dependency injection
+- Replaceable processing engines behind `IProcessingEngine`
+- Reactive engine events and progress reporting
+- Unit, integration, headless, and desktop UI test layers
+- Shared FlaUI/UIA3 page objects for WPF and WinUI 3
+- A logical automation contract that tolerates framework-specific UIA trees
+- Failure screenshots and serialized access to the interactive desktop
 
 ## Architecture
 
@@ -42,79 +53,44 @@ Native Engine (external)
 │   - Resources       - Resources         - Resources        - DI Setup        │
 │   - Bootstrap       - Bootstrap         - Bootstrap        - Workflow        │
 └───────────────────────────────▲──────────────────────────────────────────────┘
-                                │
-                                │ depends on
-                                │
-┌────────────────────────────────┴─────────────────────────────────────────────┐
-│                               PRESENTATION LAYER                             │
-│                               (Shared ViewModels)                            │
-│                                                                              │
-│   ShellViewModel     HeaderViewModel  ScreensViewModel   ImportViewModel     │
-│   GeneralViewModel   FooterViewModel  RenderViewModel                        │
-│                                                                              │
-│   Depends on: Application Services                           │
-└───────────────────────────────▲──────────────────────────────────────────────┘
-                                │
-                                │ depends on
-                                │
-┌───────────────────────────────┴──────────────────────────────────────────────┐
-│                               APPLICATION LAYER                               │
-│                               (Use‑Case Logic)                                │
-│                                                                              │
-│   Interfaces:                                                                 │
-│     IEngineService, INavigationService, IAppStatusService                     │
-│     IAppEventService, ISettingsService, IDialogService                        │
-│                                                                              │
-│   Services:                                                                   │
-│     EngineService, NavigationService, AppStatusService                        │
-│     AppEventService, SettingsService                                          │
-│                                                                              │
-│   Depends on:  Engine.Contracts                                   │
-└───────────────────────────────▲──────────────────────────────────────────────┘
-                                │
-                                │ depends on
-                                │                                
-┌───────────────────────────────┴──────────────────────────────────────────────┐
-│                               ENGINE CONTRACTS                                │
-│                               (Engine Protocol)                               │
-│                                                                              │
-│   IEngine, EngineRequest, EngineResult, EngineProgress                        │
-│   EngineEventArgs, EngineOperation enum                                       │
-│                                                                              │
-│   Pure C# — no native code, no UI, no infrastructure                          │
-└───────────────────────────────▲──────────────────────────────────────────────┘
-                                │
-                                │ implemented by
-                                │
-┌───────────────────────────────┴──────────────────────────────────────────────┐
-│                               INFRASTRUCTURE LAYER                           │
-│                           (Adapters)                                         │ 
-│                                                                              │
-│   Engine Adapters:                                                           │
-│     PInvokeEngineAdapter                                                     │
-│     CppCliEngineAdapter                                                      │
-│     GrpcEngineAdapter                                                        │
-│     SimulatorEngineAdapter                                                   |
-└───────────────────────────────▲──────────────────────────────────────────────┘
-                                │
-                                │ calls into
-                                │
-┌───────────────────────────────┴──────────────────────────────────────────────┐
-│                               NATIVE ENGINE (C++)                              │
-│                                                                              │
-│   Core processing, native callbacks, progress events, error events            │
-│   Engine lifecycle, memory management                                         │
-└──────────────────────────────────────────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────┐
+│ Presentation                                                  │
+│ Shared Shell, Header, Footer, General, Screens, and           │
+│ RenderEngine view models                                      │
+└──────────────────────────────┬────────────────────────────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────┐
+│ Application                                                   │
+│ ProcessingService | NavigationService | AppStatusService      │
+└──────────────────────────────┬────────────────────────────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────┐
+│ Engine.Contracts                                              │
+│ IProcessingEngine | requests | results | progress | events    │
+└──────────────────────────────┬────────────────────────────────┘
+                               │ implemented by
+          ┌────────────────────┼────────────────────┐
+          ▼                    ▼                    ▼
+       P/Invoke             C++/CLI          gRPC / Simulator
 ```
 
-The dependency direction points inward:
+Dependency direction points inward:
 
-- **Engine.Contracts** defines processing requests, results, progress, events, and engine interfaces.
-- **Application** coordinates engine operations and application services.
-- **Presentation** contains client-neutral view models built with CommunityToolkit.Mvvm.
+- **Engine.Contracts** defines the engine protocol without UI or infrastructure
+  dependencies.
+- **Application** coordinates processing, navigation, and application status.
+- **Presentation** contains client-neutral view models built with
+  CommunityToolkit.Mvvm.
 - **Engine.Adapters** contains replaceable engine integrations.
-- **Clients** contains platform-specific composition roots and views.
-- **Tests** separates unit, integration, headless, and UI automation coverage.
+- **Clients** contains platform-specific views and composition roots.
+- **Tests** separates fast logic tests from interactive desktop automation.
+
+## Architecture documentation
+
+- [Processing and native integration](docs/processing-and-native-integration.md)
+  explains `IProcessingService`, `IProcessingEngine`, `IEngineEventBus`,
+  progress reporting, cancellation, and the planned unmanaged callback bridge.
 
 ## Solution layout
 
@@ -141,65 +117,89 @@ tests/
 ├── Integration/
 ├── Headless/
 └── UI/
+    ├── UiTest.Infrastructure/
     ├── Wpf.UiTests/
-    ├── WinUI.UiTests/
-    └── UiTest.Infrastructure/
+    └── WinUI.UiTests/
 ```
 
 The solution entry point is [`ClientAgnostic.sln`](ClientAgnostic.sln).
+
+## Client implementation
+
+### WPF
+
+The WPF client provides the shared shell workflow with platform-specific views,
+resources, dialog integration, and dependency injection.
+
+### WinUI 3
+
+The WinUI client is an unpackaged, self-contained `win-x64` application. It
+includes:
+
+- A dependency-injected `ShellView`
+- Header navigation bound directly to the shared `HeaderViewModel`
+- General, Screens, and Render Engine views
+- Shared view-model selection through application-level data templates
+- Application-level WinUI styles and accent buttons
+- Light and Dark theme selection in the persistent footer
+
+The WPF and WinUI clients intentionally share view models and logical behavior,
+not framework-specific controls.
 
 ## Current status
 
 | Area | Status |
 | --- | --- |
-| Engine contracts | Core contracts and reactive engine events are present |
-| P/Invoke adapter | Implements the processing contract; native calls are still being developed |
-| C++/CLI adapter | Placeholder project and native source files |
-| gRPC adapter | Placeholder project and protocol file |
-| Simulator adapter | Placeholder |
-| WPF client | Application scaffold with shared presentation references |
-| WinUI client | Minimal unpackaged, self-contained WinUI 3 application for `win-x64` |
-| MAUI client | Multi-target scaffold for Android, iOS, Mac Catalyst, and Windows |
-| Headless client | Console scaffold |
-| Tests | MSTest projects and UI-test structure are present; coverage is evolving |
+| Engine contracts | Processing contracts, progress models, and reactive engine events implemented |
+| P/Invoke adapter | Implements the processing contract with a managed progress simulation; native calls remain future work |
+| C++/CLI adapter | Scaffold with native source files |
+| gRPC adapter | Scaffold with a protocol file |
+| Simulator adapter | Scaffold |
+| WPF client | Shared shell, navigation, views, and processing workflow implemented |
+| WinUI client | Shared shell workflow, native resources, themes, and views implemented |
+| MAUI client | Multi-target application scaffold |
+| Headless client | Console client and headless workflow coverage present |
+| Tests | Unit, integration, headless, WPF UI, and WinUI UI suites implemented |
 
 ## Prerequisites
 
 - Windows 10 version 1809 or newer
 - .NET 9 SDK
-- Visual Studio 2022 with the relevant workloads:
+- Visual Studio 2022 with the workloads needed for the projects you build:
   - .NET desktop development for WPF
   - Windows application development for WinUI 3
   - .NET Multi-platform App UI development for MAUI
-- A C++ desktop workload will be needed when the C++/CLI adapter becomes active
+  - Desktop development with C++ when the C++/CLI adapter becomes active
 
-You only need the workloads for the clients or adapters you intend to build.
+## Quick start
 
-## Build
+Build the implemented Windows clients:
 
-Restore and build the complete solution:
+```powershell
+dotnet build src/Clients/WpfClient/WpfClient.csproj
+dotnet build src/Clients/WinUIClient/WinUIClient.csproj
+```
+
+Build the complete solution when all required platform workloads are installed:
 
 ```powershell
 dotnet restore ClientAgnostic.sln
 dotnet build ClientAgnostic.sln
 ```
 
-Build an individual client when its platform workload is installed:
+Other clients can be built independently:
 
 ```powershell
-dotnet build src/Clients/WpfClient/WpfClient.csproj
-dotnet build src/Clients/WinUIClient/WinUIClient.csproj
 dotnet build src/Clients/MauiClient/MauiClient.csproj
 dotnet build src/Clients/HeadlessClient/HeadlessClient.csproj
 ```
 
-The WinUI client is configured as an unpackaged, self-contained `win-x64` application.
+## Testing
 
-## Test
-The solution follows a test-pyramid strategy: keep most coverage in fast unit tests and use progressively fewer tests at the broader, slower levels.
+The solution follows a test-pyramid strategy:
 
 ```text
-              UI              Few, slowest
+              UI              Few, slowest, interactive
            Headless
          Integration
             Unit              Many, fastest
@@ -207,12 +207,12 @@ The solution follows a test-pyramid strategy: keep most coverage in fast unit te
 
 | Test layer | Purpose |
 | --- | --- |
-| **Unit** | Tests Application and Presentation logic in isolation. These tests should be fast, deterministic, and make up most of the test suite. |
-| **Integration** | Verifies that multiple components, adapters, serialization boundaries, or infrastructure concerns work together. |
-| **Headless** | Exercises complete application workflows through the headless client without launching a graphical interface. |
-| **UI** | Validates critical user journeys through WPF and WinUI 3 with shared FlaUI/UIA3 page objects. These tests require an interactive Windows desktop session. |
+| **Unit** | Tests Application and Presentation logic in isolation |
+| **Integration** | Verifies service registration and multi-component workflows |
+| **Headless** | Exercises complete workflows without launching a graphical client |
+| **UI** | Validates critical WPF and WinUI 3 journeys through FlaUI/UIA3 |
 
-Use UI tests only for high-value user journeys that cannot be covered reliably at a lower level. Business rules and view-model behavior should normally be tested in the Unit projects.
+Run non-interactive tests:
 
 ```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
@@ -221,20 +221,44 @@ dotnet test tests/Integration/Integration.Tests.csproj
 dotnet test tests/Headless/Headless.Tests.csproj
 ```
 
-Run UI automation separately on an interactive Windows desktop:
+### Desktop UI automation
+
+UI tests require an unlocked, interactive Windows desktop:
 
 ```powershell
 dotnet test tests/UI/Wpf.UiTests/Wpf.UiTests.csproj
 dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
 ```
 
-The UI test projects share a named desktop lock, so WPF and WinUI automation
-cannot manipulate the interactive desktop concurrently.
+The two client suites use the same logical page objects and automation IDs:
 
-### Code coverage
+```text
+UiTest.Infrastructure
+├── generic test lifecycle and application fixture contract
+├── desktop mutex
+├── waits and failure screenshots
+├── automation IDs and contract verification
+└── shared shell, component, and page objects
+```
 
-Collect and merge coverage from the Application unit, Presentation unit,
-Integration, Headless, and WPF UI test projects:
+Each client keeps only its executable launcher and client-specific tests. A
+named Windows mutex prevents WPF and WinUI test processes from manipulating the
+desktop concurrently.
+
+Current UI coverage includes:
+
+- Application startup
+- Shared automation-contract verification
+- Header navigation across shared views
+- Load-and-process workflow with terminal status and 100% progress
+- WinUI Light/Dark theme selection
+
+At the latest verification, all 4 WPF UI tests and all 5 WinUI UI tests passed.
+
+## Code coverage
+
+Collect and merge Application unit, Presentation unit, Integration, Headless,
+and WPF UI coverage:
 
 ```powershell
 .\scripts\coverage.ps1
@@ -270,9 +294,14 @@ non-UI report in a non-interactive environment:
 .\scripts\coverage.ps1 -SkipUi
 ```
 
+WinUI client-process coverage is not yet included.
+
 ## Dependency management
 
-Shared compiler settings are defined in [`Directory.Build.props`](Directory.Build.props). NuGet versions are managed centrally in [`Directory.Packages.props`](Directory.Packages.props), so individual project files normally contain versionless `PackageReference` entries.
+Shared compiler settings are defined in
+[`Directory.Build.props`](Directory.Build.props). NuGet versions are managed
+centrally in [`Directory.Packages.props`](Directory.Packages.props), so project
+files normally contain versionless `PackageReference` entries.
 
 Notable dependencies include:
 
@@ -281,22 +310,21 @@ Notable dependencies include:
 - Microsoft.WindowsAppSDK
 - System.Reactive
 - MSTest and Moq
-- FlaUI for WPF UI automation
-
-## Repository hygiene
-
-Generated build, IDE, test-result, coverage, and publish artifacts are excluded through [`.gitignore`](.gitignore). After cloning, NuGet and build assets are recreated automatically during restore and build.
+- FlaUI.Core and FlaUI.UIA3
 
 ## Contributing
 
-This solution is currently an architectural prototype. When contributing:
+This repository is an architectural POC. When contributing:
 
 1. Keep UI-independent behavior out of client projects.
-2. Depend on `Engine.Contracts` instead of concrete adapters.
-3. Register the selected adapter in the client composition root.
-4. Add tests in the matching test layer.
-5. Keep package versions centralized.
+2. Depend on `Engine.Contracts`, not concrete adapters.
+3. Select concrete adapters in each client composition root.
+4. Keep WPF and WinUI automation IDs logically aligned.
+5. Put cross-client page-object behavior in `UiTest.Infrastructure`.
+6. Add tests at the lowest reliable test layer.
+7. Keep package versions centralized.
 
 ## Notes
 
-Built with assistance from AI coding tools for scaffolding and documentation; architecture and design decisions are my own.
+Built with assistance from AI coding tools for scaffolding and documentation;
+architecture and design decisions are my own.
