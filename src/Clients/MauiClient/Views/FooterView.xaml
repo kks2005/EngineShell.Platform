@@ -8,11 +8,14 @@
     Padding="16,8"
     BackgroundColor="{AppThemeBinding Light=#E1E1E1, Dark=#212121}">
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-        <Label Text="{Binding Status, TargetNullValue=Ready}" VerticalOptions="Center" />
+        <Label
+            AutomationId="Footer.StatusText"
+            Text="{Binding Status, TargetNullValue=Ready}"
+            VerticalOptions="Center" />
         <Picker
             x:Name="ThemePicker"
             Grid.Column="1"
-            AutomationId="Footer.ThemePicker"
+            AutomationId="Footer.ThemeComboBox"
             SelectedIndex="0"
             SelectedIndexChanged="OnThemeChanged"
             Title="Theme">
