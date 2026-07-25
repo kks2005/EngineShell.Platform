@@ -53,7 +53,7 @@
         <ListBox.ItemContainerStyle>
             <Style TargetType="ListBoxItem">
                 <Setter Property="AutomationProperties.AutomationId"
-                        Value="{Binding Title, StringFormat=Header.{0}Item}"/>
+                        Value="{Binding Title}"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Margin" Value="10,0,10,0"></Setter>

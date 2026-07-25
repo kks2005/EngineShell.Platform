@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Engine.Adapters\Engine.Adapter.PInvoke\Engine.Adapter.PInvoke.csproj" />
     <ProjectReference Include="..\..\Presentation\Presentation.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,20 @@
+<UserControl
+    x:Class="WinUIClient.Views.ScreensView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel Spacing="12">
+        <TextBlock
+            Text="Screens"
+            Style="{StaticResource TitleTextBlockStyle}"
+            AutomationProperties.AutomationId="Screens.TitleText" />
+        <Button
+            Content="Load Screens"
+            Command="{Binding LoadScreensCommand}"
+            AutomationProperties.AutomationId="Screens.LoadButton" />
+        <TextBlock
+            Text="Use the command above to run the shared screen-loading workflow."
+            TextWrapping="Wrap"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+    </StackPanel>
+</UserControl>

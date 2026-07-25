@@ -9,9 +9,9 @@ public partial class HeaderViewModel : ViewModelBase
     public ObservableCollection<NavigationItem> NavigationItems { get; }
 
     [ObservableProperty]
-    private NavigationItem selectedNavigationItem;
+    private NavigationItem? selectedNavigationItem;
 
-    public event Action<object> NavigationChanged;
+    public event Action<string>? NavigationChanged;
 
     public HeaderViewModel(IEnumerable<NavigationItem> items)
     {
@@ -19,10 +19,12 @@ public partial class HeaderViewModel : ViewModelBase
         SelectedNavigationItem = NavigationItems.FirstOrDefault();
     }
 
-    partial void OnSelectedNavigationItemChanged(NavigationItem value)
+    partial void OnSelectedNavigationItemChanged(NavigationItem? value)
     {
-        if (value != null)
+        if (value is not null)
+        {
             NavigationChanged?.Invoke(value.Title);
+        }
     }
 }
 

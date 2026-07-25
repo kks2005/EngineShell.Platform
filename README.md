@@ -141,7 +141,9 @@ tests/
 ├── Integration/
 ├── Headless/
 └── UI/
-    └── Wpf.UiTests.csproj
+    ├── Wpf.UiTests/
+    ├── WinUI.UiTests/
+    └── UiTest.Infrastructure/
 ```
 
 The solution entry point is [`ClientAgnostic.sln`](ClientAgnostic.sln).
@@ -208,23 +210,26 @@ The solution follows a test-pyramid strategy: keep most coverage in fast unit te
 | **Unit** | Tests Application and Presentation logic in isolation. These tests should be fast, deterministic, and make up most of the test suite. |
 | **Integration** | Verifies that multiple components, adapters, serialization boundaries, or infrastructure concerns work together. |
 | **Headless** | Exercises complete application workflows through the headless client without launching a graphical interface. |
-| **UI** | Validates critical user journeys through WPF UI automation with FlaUI. These tests are the slowest and require an interactive Windows desktop session. |
+| **UI** | Validates critical user journeys through WPF and WinUI 3 with shared FlaUI/UIA3 page objects. These tests require an interactive Windows desktop session. |
 
 Use UI tests only for high-value user journeys that cannot be covered reliably at a lower level. Business rules and view-model behavior should normally be tested in the Unit projects.
 
 ```powershell
-dotnet test ClientAgnostic.sln
-```
-
-Run one test layer directly:
-
-```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
 dotnet test tests/Unit/Presentation.Tests/Presentation.Tests.csproj
-dotnet test tests/UI/Wpf.UiTests.csproj
+dotnet test tests/Integration/Integration.Tests.csproj
+dotnet test tests/Headless/Headless.Tests.csproj
 ```
 
-The WPF UI test project uses FlaUI. UI automation tests must run on an interactive Windows desktop session.
+Run UI automation separately on an interactive Windows desktop:
+
+```powershell
+dotnet test tests/UI/Wpf.UiTests/Wpf.UiTests.csproj
+dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
+```
+
+The UI test projects share a named desktop lock, so WPF and WinUI automation
+cannot manipulate the interactive desktop concurrently.
 
 ### Code coverage
 

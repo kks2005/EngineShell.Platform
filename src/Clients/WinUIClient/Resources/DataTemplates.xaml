@@ -1,0 +1,24 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WinUIClient"
+    xmlns:views="using:WinUIClient.Views">
+
+    <DataTemplate x:Key="GeneralViewTemplate">
+        <views:GeneralView />
+    </DataTemplate>
+
+    <DataTemplate x:Key="ScreensViewTemplate">
+        <views:ScreensView />
+    </DataTemplate>
+
+    <DataTemplate x:Key="RenderEngineViewTemplate">
+        <views:RenderEngineView />
+    </DataTemplate>
+
+    <local:ViewModelTemplateSelector
+        x:Key="ViewModelTemplateSelector"
+        GeneralTemplate="{StaticResource GeneralViewTemplate}"
+        ScreensTemplate="{StaticResource ScreensViewTemplate}"
+        RenderEngineTemplate="{StaticResource RenderEngineViewTemplate}" />
+</ResourceDictionary>
