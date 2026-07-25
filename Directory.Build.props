@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework Condition="'$(MSBuildProjectName)' != 'MauiClient' and '$(TargetFramework)' == '' and '$(TargetFrameworks)' == ''">net9.0</TargetFramework>
+    <TargetFramework Condition="'$(MSBuildProjectName)' != 'MauiClient' and '$(MSBuildProjectName)' != 'WinUIClient' and '$(TargetFramework)' == '' and '$(TargetFrameworks)' == ''">net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

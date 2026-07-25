@@ -46,7 +46,7 @@ $testProjects = [ordered]@{
     "integration" = "tests\Integration\Integration.Tests.csproj"
     "headless" = "tests\Headless\Headless.Tests.csproj"
 }
-$uiTestProject = Join-Path $resolvedRepositoryRoot "tests\UI\Wpf.UiTests.csproj"
+$uiTestProject = Join-Path $resolvedRepositoryRoot "tests\UI\Wpf.UiTests\Wpf.UiTests.csproj"
 
 dotnet tool restore
 if ($LASTEXITCODE -ne 0) {
@@ -64,7 +64,7 @@ foreach ($project in $testProjects.Values) {
 }
 
 if (-not $SkipUi) {
-    Write-Host "Restoring tests\UI\Wpf.UiTests.csproj..."
+    Write-Host "Restoring tests\UI\Wpf.UiTests\Wpf.UiTests.csproj..."
     dotnet restore $uiTestProject
 
     if ($LASTEXITCODE -ne 0) {

@@ -44,6 +44,12 @@
             </StackPanel>
 
             <TextBlock
+            Margin="0,0,0,16"
+            Text="{Binding InputPath}"
+            TextWrapping="Wrap"
+            AutomationProperties.AutomationId="RenderEngine.InputPathText" />
+
+            <TextBlock
             Text="{Binding Status}"
             TextWrapping="Wrap"
             AutomationProperties.AutomationId="RenderEngine.StatusText" />

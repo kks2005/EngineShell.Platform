@@ -26,14 +26,11 @@ public partial class ShellViewModel : ViewModelBase
 
         Header.NavigationChanged += key =>
         {
-            if (key is string str)
-            {
-                Navigation.NavigateTo(str);
-                CurrentViewModel = Navigation.CurrentViewModel;
+            Navigation.NavigateTo(key);
+            CurrentViewModel = Navigation.CurrentViewModel;
 
-                Status.Status = $"Loaded {key}";
-                Status.Progress = 0;
-            }
+            Status.Status = $"Loaded {key}";
+            Status.Progress = 0;
         };
 
 

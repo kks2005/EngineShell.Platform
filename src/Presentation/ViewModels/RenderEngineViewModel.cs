@@ -61,7 +61,11 @@ public partial class RenderEngineViewModel : ViewModelBase
         var progress = new Progress<ProcessingProgress>(p =>
         {
             Progress = p.PercentComplete;
-            Status = p.Message ?? string.Empty;
+
+            if (p.PercentComplete < 100)
+            {
+                Status = p.Message ?? string.Empty;
+            }
         });
 
         try

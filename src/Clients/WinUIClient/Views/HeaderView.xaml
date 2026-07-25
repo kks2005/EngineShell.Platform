@@ -1,0 +1,50 @@
+<UserControl
+    x:Class="WinUIClient.Views.HeaderView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid
+        Padding="12,8"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <ListView
+            ItemsSource="{Binding NavigationItems}"
+            SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
+            SelectionMode="Single"
+            HorizontalAlignment="Center"
+            IsItemClickEnabled="False"
+            AutomationProperties.AutomationId="Header.Navigation">
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsStackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter
+                        Property="AutomationProperties.AutomationId"
+                        Value="{Binding Title}" />
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel
+                        MinWidth="88"
+                        Padding="12,6"
+                        HorizontalAlignment="Center"
+                        Spacing="4">
+                        <FontIcon
+                            Glyph="{Binding Icon}"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="20"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="{Binding Title}"
+                            HorizontalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</UserControl>
