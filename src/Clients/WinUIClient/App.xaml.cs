@@ -1,5 +1,9 @@
+using Engine.Adapter.PInvoke;
+using Engine.Contracts;
+using EngineShell.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
+using Presentation;
 
 namespace WinUIClient;
 
@@ -24,7 +28,12 @@ public partial class App : Application
         }
 
         var services = new ServiceCollection();
-        DIRegistration.RegisterServices(services);
+
+        services.AddApplication();
+        services.AddPresentation();
+        services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
+        services.AddSingleton<ShellView>();
+
         _serviceProvider = services.BuildServiceProvider();
 
         _mainWindow = _serviceProvider.GetRequiredService<ShellView>();

@@ -1,59 +1,124 @@
 using Engine.Contracts;
 
 namespace Engine.Adapter.PInvoke;
+
 /// <summary>
-/// IProcessingEngine implementation that uses P/Invoke to call native code for processing. This adapter serves as a bridge between managed and unmanaged code, allowing the processing engine to leverage native libraries for performance or functionality that is not available in managed code.
+/// Maps the managed processing contract to the C API exposed by Engine.Native.
 /// </summary>
 public sealed class PInvokeEngineAdapter : IProcessingEngine
 {
     private readonly IEngineEventBus _eventBus;
-    public PInvokeEngineAdapter(IEngineEventBus engineEventBus)
-    {
-        _eventBus = engineEventBus;
 
+    public PInvokeEngineAdapter(IEngineEventBus eventBus)
+    {
+        _eventBus = eventBus;
     }
+
     public async Task<ProcessingResult> ProcessAsync(
         ProcessingRequest request,
         IProgress<ProcessingProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         _eventBus.Publish(new EngineEvent(
-        EngineEventType.Started,
-        "Processing started.",
-        DateTimeOffset.Now));
+            EngineEventType.Started,
+            "Processing started.",
+            DateTimeOffset.Now));
 
         try
         {
-            for (var percent = 0; percent <= 100; percent += 10)
-            {
-                progress?.Report(new ProcessingProgress(
-                    percent,
-                    $"Processing... {percent}%"));
-
-                if (percent < 100)
-                {
-                    await Task.Delay(200, cancellationToken);
-                }
-            }
+            // Engine_Process is synchronous. Only the native work runs on the
+            // worker thread; managed events are published on the caller context.
+            var result = await Task.Run(
+                () => ProcessNative(request, progress, cancellationToken),
+                cancellationToken);
 
             _eventBus.Publish(new EngineEvent(
-       EngineEventType.Completed,
-       "Processing completed.",
-       DateTimeOffset.Now));
+                result.Success
+                    ? EngineEventType.Completed
+                    : EngineEventType.Error,
+                result.Success
+                    ? "Processing completed."
+                    : result.ErrorMessage ?? "Processing failed.",
+                DateTimeOffset.Now));
 
-
-            return new ProcessingResult(
-                Success: true,
-                OutputPath: request.OutputPath ??
-                            $"{request.InputPath}.processed");
+            return result;
         }
         catch (OperationCanceledException)
         {
-            progress?.Report(new ProcessingProgress(
-                0,
-                "Cancelled"));
+            progress?.Report(new ProcessingProgress(0, "Cancelled"));
+
+            _eventBus.Publish(new EngineEvent(
+                EngineEventType.Cancelled,
+                "Processing cancelled.",
+                DateTimeOffset.Now));
 
             throw;
         }
+    }
+
+    private static ProcessingResult ProcessNative(
+        ProcessingRequest request,
+        IProgress<ProcessingProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var nativeRequest = new NativeMethods.EngineRequestDto
+        {
+            InputPath = request.InputPath,
+            OutputPath = request.OutputPath
+        };
+
+        ProcessingResult? completedResult = null;
+
+        NativeMethods.ProgressCallback onProgress =
+            (percent, message, _) =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    NativeMethods.Engine_Cancel();
+                    return;
+                }
+
+                progress?.Report(new ProcessingProgress(
+                    percent,
+                    NativeMethods.ToManagedString(message)));
+            };
+
+        NativeMethods.CompletionCallback onCompletion =
+            (success, outputPath, _) =>
+            {
+                completedResult = new ProcessingResult(
+                    success == 1,
+                    NativeMethods.ToManagedString(outputPath));
+            };
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var cancellationRegistration =
+            cancellationToken.Register(NativeMethods.Engine_Cancel);
+
+        var status = NativeMethods.Engine_Process(
+            ref nativeRequest,
+            onProgress,
+            onCompletion,
+            nint.Zero);
+
+        // Keep callback delegates alive until the synchronous native call ends.
+        GC.KeepAlive(onProgress);
+        GC.KeepAlive(onCompletion);
+
+        if (status == -1)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+
+        if (status != 0 || completedResult is null)
+        {
+            var message = $"Native processing failed with code {status}.";
+            return new ProcessingResult(false, null, message);
+        }
+
+        return completedResult;
     }
 }

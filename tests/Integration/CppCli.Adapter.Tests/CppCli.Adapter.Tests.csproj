@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Engine.Adapters\Engine.Adapter.CppCli\Engine.Adapter.CppCli.vcxproj" />
+    <ProjectReference Include="..\..\..\src\Engine.Contracts\Engine.Contracts.csproj" />
+  </ItemGroup>
+</Project>

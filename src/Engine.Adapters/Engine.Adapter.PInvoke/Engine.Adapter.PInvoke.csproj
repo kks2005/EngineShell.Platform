@@ -1,5 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\Engine.Contracts\Engine.Contracts.csproj" />
+    <!-- Visual Studio MSBuild can build the native dependency directly. -->
+    <ProjectReference Include="..\..\Engine.Native\Engine.Native.vcxproj"
+                      ReferenceOutputAssembly="false"
+                      Condition="'$(MSBuildRuntimeType)' == 'Full'" />
+  </ItemGroup>
+
+  <!-- Runtime dependency owned by this adapter and propagated to its clients. -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">
+    <None Include="..\..\Engine.Native\bin\x64\$(Configuration)\Engine.Native.dll"
+          Link="Engine.Native.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

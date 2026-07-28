@@ -1,11 +1,14 @@
-﻿using EngineShell.Application;
+using Engine.Adapter.PInvoke;
+using Engine.Contracts;
+using EngineShell.Application;
 using Microsoft.Extensions.DependencyInjection;
+using Presentation;
 using System.Windows;
 
 namespace WpfClient;
 
 /// <summary>
-/// Interaction logic for App.xaml
+/// Interaction logic for App.xaml.
 /// </summary>
 public partial class App : Application
 {
@@ -15,22 +18,22 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Build DI container
         var services = new ServiceCollection();
-        DIRegistration.RegisterServices(services);
+
+        services.AddApplication();
+        services.AddPresentation();
+        services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
+        services.AddSingleton<ShellView>();
+
         _serviceProvider = services.BuildServiceProvider();
 
-        // Resolve ShellView from DI
         var shell = _serviceProvider.GetRequiredService<ShellView>();
         shell.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        if (_serviceProvider is IDisposable disposable)
-            disposable.Dispose();
-
+        _serviceProvider?.Dispose();
         base.OnExit(e);
     }
 }
-

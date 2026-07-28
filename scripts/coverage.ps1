@@ -43,7 +43,7 @@ New-Item -ItemType Directory -Path $resolvedCoverageRoot -Force | Out-Null
 $testProjects = [ordered]@{
     "application-unit" = "tests\Unit\Application.Tests\Application.Tests.csproj"
     "presentation-unit" = "tests\Unit\Presentation.Tests\Presentation.Tests.csproj"
-    "integration" = "tests\Integration\Integration.Tests.csproj"
+    "integration" = "tests\Integration\Workflow.Tests\Integration.Tests.csproj"
     "headless" = "tests\Headless\Headless.Tests.csproj"
 }
 $uiTestProject = Join-Path $resolvedRepositoryRoot "tests\UI\Wpf.UiTests\Wpf.UiTests.csproj"

@@ -104,6 +104,7 @@ public sealed class WpfApplicationFixture : IUiApplicationFixture
             "Clients",
             "WpfClient",
             "bin",
+            "x64",
             configuration,
             "net9.0-windows",
             "WpfClient.exe");

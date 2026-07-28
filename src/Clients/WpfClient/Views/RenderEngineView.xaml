@@ -80,19 +80,5 @@
             </Grid>
         </StackPanel>
 
-        <TextBlock
-        Margin="0,16,0,0"
-        Text="{Binding RawEngineEventCount, StringFormat=Native events: {0}}"
-        AutomationProperties.AutomationId="RenderEngine.RawEngineEventCountText" />
-
-        <TextBlock
-        Margin="0,4,0,0"
-        Text="{Binding DisplayedEngineEventCount, StringFormat=UI event updates: {0}}"
-        AutomationProperties.AutomationId="RenderEngine.DisplayedEngineEventCountText" />
-
-        <TextBlock
-        Margin="0,4,0,0"
-        Text="{Binding LastDisplayedEngineEventText}"
-        AutomationProperties.AutomationId="RenderEngine.LastDisplayedEngineEventText" />
     </StackPanel>
 </UserControl>

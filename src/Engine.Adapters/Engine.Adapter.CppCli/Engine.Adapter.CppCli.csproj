@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\..\Engine.Contracts\Engine.Contracts.csproj" />
-    <None Include="CppCliEngineAdapter.cpp" />
-    <None Include="CppCliEngineAdapter.h" />
-  </ItemGroup>
-</Project>

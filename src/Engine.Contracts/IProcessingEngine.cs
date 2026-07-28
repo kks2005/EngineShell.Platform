@@ -15,33 +15,24 @@ public record ProcessingRequest(
     string InputPath,
     string? OutputPath = null);
 
-public record ProcessingResult(
-    bool Success,
-    string? OutputPath,
-    string? ErrorMessage = null);
+public sealed class ProcessingResult
+{
+    public ProcessingResult()
+    {
+    }
+
+    public ProcessingResult(bool success, string? outputPath, string? errorMessage = null)
+    {
+        Success = success;
+        OutputPath = outputPath;
+        ErrorMessage = errorMessage;
+    }
+
+    public bool Success { get; set; }
+    public string? OutputPath { get; set; }
+    public string? ErrorMessage { get; set; }
+}
 
 public record ProcessingProgress(
     int PercentComplete,
     string? Message = null);
-
-public interface IEngineEventBus
-{
-    IObservable<EngineEvent> Events { get; }
-
-    void Publish(EngineEvent engineEvent);
-}
-public sealed record EngineEvent(
-    EngineEventType Type,
-    string Message,
-    DateTimeOffset Timestamp);
-
-public enum EngineEventType
-{
-    Info,
-    Started,
-    Progress,
-    Completed,
-    Cancelled,
-    Warning,
-    Error
-}

@@ -10,7 +10,7 @@ namespace Integration.Tests;
 public sealed class ServiceRegistrationTests
 {
     [TestMethod]
-    public void AddApplicationServices_ResolvesRealSingletonServices()
+    public void AddApplication_ResolvesRealSingletonServices()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -19,7 +19,7 @@ public sealed class ServiceRegistrationTests
             new NavigationItem("General", "home", initialViewModel));
 
         // Act
-        services.AddApplicationServices();
+        services.AddApplication();
         using var provider = services.BuildServiceProvider();
         var firstStatus = provider.GetRequiredService<IAppStatusService>();
         var secondStatus = provider.GetRequiredService<IAppStatusService>();

@@ -1,4 +1,10 @@
+using Engine.Adapter.PInvoke;
+using Engine.Adapter.Simulator;
+using Engine.Contracts;
+using EngineShell.Application;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Presentation;
 
 namespace Clients.Maui;
 
@@ -19,7 +25,17 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        DIRegistration.RegisterServices(builder.Services);
+        builder.Services.AddApplication();
+        builder.Services.AddPresentation();
+
+#if WINDOWS
+        builder.Services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
+#else
+        builder.Services.AddSingleton<IProcessingEngine, SimulatorEngineAdapter>();
+#endif
+
+        builder.Services.AddSingleton<MainPage>();
+
         return builder.Build();
     }
 }

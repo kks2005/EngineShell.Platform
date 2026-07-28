@@ -4,10 +4,10 @@ This document describes the processing boundary used by EngineShell.Platform
 and the intended bridge between managed application code and an unmanaged
 processing engine.
 
-The repository currently implements the managed contracts, application
-orchestration, progress flow, cancellation flow, engine event stream, and a
-simulated implementation in `PInvokeEngineAdapter`. Native function invocation
-and unmanaged callback registration are planned work.
+The repository implements the managed contracts, application orchestration,
+progress and cancellation flow, engine lifecycle events, a native C API, and
+working P/Invoke and C++/CLI adapters. A managed simulator remains available
+for cross-platform clients and tests that do not require native code.
 
 ## Overview
 
@@ -189,8 +189,8 @@ message overwrites `Completed`.
 
 ## Managed-to-unmanaged callback flow
 
-The planned P/Invoke adapter translates a native callback API into the managed
-contracts:
+The P/Invoke and C++/CLI adapters translate the native callback API into the
+managed contracts:
 
 ```text
 Managed code                                      Unmanaged code
@@ -200,18 +200,16 @@ ProcessingService
     ▼
 PInvokeEngineAdapter
     ├── retain callback delegates
-    ├── marshal request data
+    ├── map ProcessingRequest to EngineRequestDto
     ├── register callbacks ──────────────────────▶ native engine
     └── invoke native processing                         │
                                                         ├── progress callback
-                                                        ├── event callback
-                                                        ├── error callback
                                                         └── completion callback
                                                                │
 PInvokeEngineAdapter ◀─────────────────────────────────────────┘
     ├── IProgress<ProcessingProgress>.Report(...)
     ├── IEngineEventBus.Publish(...)
-    └── TaskCompletionSource.TrySetResult(...)
+    └── create ProcessingResult
             │
             ▼
 Task<ProcessingResult>
@@ -226,20 +224,20 @@ escape into the application or presentation layers.
 | Native behavior | Managed representation |
 | --- | --- |
 | Progress callback | `IProgress<ProcessingProgress>.Report` |
-| Lifecycle or diagnostic callback | `IEngineEventBus.Publish` |
 | Successful completion callback | Successful `ProcessingResult` |
 | Expected engine failure | Failed `ProcessingResult` with `ErrorMessage` |
 | Invalid interop state | Managed exception |
 | Managed cancellation | Native cancel function or cancellation flag |
 | Native cancellation acknowledgement | Cancelled managed task or cancellation result |
 
-The exact mapping depends on the native API. It should be documented beside the
-adapter when the native ABI is defined.
+Lifecycle events are managed application concerns and are published by the
+adapters rather than by the native engine.
 
 ## Callback lifetime and memory safety
 
-Native code may retain callback function pointers after the initial P/Invoke
-call returns. The adapter must therefore make callback lifetime explicit.
+`Engine_Process` is synchronous in the current POC. Callback pointers and
+borrowed request strings remain valid only for the duration of that call.
+The adapters must still make their lifetime explicit.
 
 Required rules:
 
@@ -248,24 +246,13 @@ Required rules:
 2. Match the native calling convention and parameter layout exactly.
 3. Validate pointers, lengths, and string encodings before marshaling.
 4. Never allow a managed exception to cross the unmanaged callback boundary.
-5. Correlate callbacks with the correct active request.
-6. Ignore callbacks safely after cancellation, completion, or disposal.
-7. Do not release delegates, handles, or buffers until the native engine
-   confirms it no longer uses them.
-8. Make completion idempotent because native completion and cancellation may
-   race.
+5. Copy callback strings before returning to native code.
+6. Keep callback delegates alive until `Engine_Process` returns.
+7. Do not retain borrowed native pointers in managed state.
 
-Depending on the native API, lifetime management may use:
-
-- Strong delegate fields
-- `GCHandle`
-- `SafeHandle`
-- A request-state object
-- An operation identifier
-- `TaskCompletionSource<ProcessingResult>`
-
-`SafeHandle` should be preferred for owned native handles because it provides
-reliable cleanup during normal disposal and exceptional paths.
+The P/Invoke adapter keeps delegates strongly referenced for the synchronous
+call. The C++/CLI adapter uses a `gcroot` callback context to route callbacks
+to the correct managed operation.
 
 ## Threading and synchronization
 
@@ -284,10 +271,10 @@ The adapter should:
 created. In the current clients, the view model creates it on the UI thread, so
 its callback can safely update observable properties.
 
-The event bus does not guarantee UI-thread delivery. A UI subscriber must
-marshal notifications to its dispatcher if events can be published from a
-native worker thread. This rule becomes important when real native callbacks
-replace the current managed simulation.
+The adapters run synchronous native work on a worker task. Progress is reported
+through the caller-provided `IProgress<T>`, while lifecycle events are
+published before and after the awaited worker task so UI subscribers are not
+updated directly from the native worker thread.
 
 ## Cancellation
 
@@ -340,41 +327,16 @@ Errors should not be reported only through the event bus. The caller awaiting
 
 ## Current POC implementation
 
-The current `PInvokeEngineAdapter` is managed-only despite its intended adapter
-role. It currently:
+The current native path includes:
 
-- Implements `IProcessingEngine`.
-- Publishes `Started` and `Completed` events.
-- Reports progress from 0% through 100%.
-- Observes `CancellationToken`.
-- Returns a successful `ProcessingResult`.
+- `Engine.Native.dll` with a small C ABI and `EngineRequestDto`.
+- Progress and completion callbacks.
+- Native cancellation through `Engine_Cancel`.
+- `PInvokeEngineAdapter` with UTF-8 marshalling and delegate callbacks.
+- `CppCliEngineAdapter` with explicit managed/native conversion and callback
+  context lifetime.
+- Adapter-owned deployment of `Engine.Native.dll`.
+- Focused x64 integration tests for both adapters.
 
-This is sufficient to exercise the architecture through unit, headless, WPF,
-and WinUI tests without requiring a native binary.
-
-It does not currently:
-
-- Declare or invoke native entry points.
-- Register unmanaged callbacks.
-- Marshal native request or result structures.
-- Own native handles or buffers.
-- Translate native error codes.
-- Call a native cancellation function.
-
-## Planned native integration
-
-When a native API is available, the recommended sequence is:
-
-1. Document the native ABI, ownership rules, calling convention, and string
-   encoding.
-2. Add minimal `NativeMethods` declarations.
-3. Define callback delegates and native data structures.
-4. Introduce a per-operation state object and `TaskCompletionSource`.
-5. Implement progress, event, error, and completion callback translation.
-6. Implement cancellation and callback shutdown.
-7. Add tests using a deterministic native test library.
-8. Add stress tests for completion/cancellation races and late callbacks.
-9. Verify x64 deployment, native binary discovery, and cleanup.
-
-The public application and presentation contracts should remain stable while
-this adapter evolves.
+Future native algorithms can evolve behind this boundary without changing the
+public application or presentation contracts.

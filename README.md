@@ -225,16 +225,21 @@ The solution follows a test-pyramid strategy:
 | **Unit** | Tests Application and Presentation logic in isolation |
 | **Integration** | Verifies service registration and multi-component workflows |
 | **Headless** | Exercises complete workflows without launching a graphical client |
-| **UI** | Validates critical WPF, WinUI 3, and MAUI journeys through FlaUI/UIA3 |  # Updated to include MAUI
+| **UI** | Validates critical WPF, WinUI 3, and MAUI journeys through FlaUI/UIA3 |
 
 Run non-interactive tests:
 
 ```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
 dotnet test tests/Unit/Presentation.Tests/Presentation.Tests.csproj
-dotnet test tests/Integration/Integration.Tests/Integration.Tests.csproj
-dotnet test tests/Headless/Headless.Tests/Headless.Tests.csproj
+dotnet test tests/Integration/Workflow.Tests/Integration.Tests.csproj
+dotnet test tests/Integration/PInvoke.Adapter.Tests/PInvoke.Adapter.Tests.csproj -p:Platform=x64
+dotnet test tests/Headless/Headless.Tests.csproj
 ```
+
+`CppCli.Adapter.Tests` must first be built as x64 with Visual Studio MSBuild
+because it references a C++ project. The compiled tests can then be run with
+`dotnet test tests/Integration/CppCli.Adapter.Tests/CppCli.Adapter.Tests.csproj --no-build -p:Platform=x64`.
 
 ### Desktop UI automation
 
@@ -243,7 +248,7 @@ UI tests require an unlocked, interactive Windows desktop:
 ```powershell
 dotnet test tests/UI/Wpf.UiTests/Wpf.UiTests.csproj
 dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
-dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj  # New command to run MAUI UI tests
+dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj
 ```
 
 The three client suites use the same logical page objects and automation IDs:

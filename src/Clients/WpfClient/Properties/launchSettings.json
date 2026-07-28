@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WpfClient": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
