@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>Cobertura</Format>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*\\Engine\.Native\.dll$</ModulePath>
+                <ModulePath>.*\\Engine\.Adapter\.CppCli\.dll$</ModulePath>
+                <ModulePath>.*\\Engine\.Adapter\.PInvoke\.dll$</ModulePath>
+                <ModulePath>.*\\Engine\.Contracts\.dll$</ModulePath>
+              </Include>
+              <Exclude>
+                <ModulePath>.*Tests\.dll$</ModulePath>
+              </Exclude>
+            </ModulePaths>
+            <Sources>
+              <Exclude>
+                <Source>.*\\obj\\.*</Source>
+                <Source>.*\\vctools\\.*</Source>
+                <Source>.*\\windows kits\\.*</Source>
+              </Exclude>
+            </Sources>
+            <IncludeTestAssembly>False</IncludeTestAssembly>
+            <CollectFromChildProcesses>True</CollectFromChildProcesses>
+            <EnableStaticManagedInstrumentation>True</EnableStaticManagedInstrumentation>
+            <EnableDynamicManagedInstrumentation>True</EnableDynamicManagedInstrumentation>
+            <EnableStaticNativeInstrumentation>True</EnableStaticNativeInstrumentation>
+            <EnableDynamicNativeInstrumentation>True</EnableDynamicNativeInstrumentation>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

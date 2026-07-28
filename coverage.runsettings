@@ -7,7 +7,7 @@
           <Format>cobertura</Format>
           <Exclude>[*.Tests]*</Exclude>
           <ExcludeByFile>**/*.g.cs,**/*.g.i.cs,**/*.Designer.cs</ExcludeByFile>
-          <UseSourceLink>true</UseSourceLink>
+          <UseSourceLink>false</UseSourceLink>
         </Configuration>
       </DataCollector>
     </DataCollectors>

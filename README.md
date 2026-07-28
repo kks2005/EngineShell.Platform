@@ -1,103 +1,95 @@
 # EngineShell.Platform
 
-ClientAgnosticEngine is an experimental .NET 9 solution demonstrating a modular, interface-driven architecture for building multiple UI clients on top of a shared application and presentation layer.
+EngineShell.Platform is an evolving .NET 9 architecture POC that demonstrates
+how WPF, WinUI 3, and .NET MAUI clients can share presentation logic,
+application services, processing contracts, and UI automation while keeping
+framework-specific code isolated.
 
-Processing engines — native, managed, or otherwise — are isolated behind contracts and adapter projects, so a client never couples to a specific engine implementation. The same application core can drive WPF, a headless console client, or other UI framework (WinUI, MAUI, Blazor Hybrid), while the engine integration underneath — P/Invoke, C++/CLI, or a test double — is swapped entirely at the composition root.
+Processing implementations are hidden behind `IProcessingEngine`. A client
+selects an adapter at its composition root, while the rest of the application
+remains unaware of whether processing is performed by native C++, C++/CLI,
+P/Invoke, or a managed simulator.
 
-> This repository is under active development. Several clients and adapters are currently scaffolds rather than production-ready implementations.
+> This repository is under active development. It demonstrates architectural
+> patterns and test infrastructure; it is not intended to be a
+> production-ready framework.
 
 ## What this POC demonstrates
 
 - Shared MVVM presentation logic across WPF, WinUI 3, and .NET MAUI
-- Client-specific XAML, resources, startup, and dependency injection
+- Thin, platform-specific XAML views and application composition roots
 - Replaceable processing engines behind `IProcessingEngine`
-- Reactive engine events and progress reporting
+- Native C++ integration through both P/Invoke and C++/CLI adapters
+- Request/result mapping and native-to-managed progress callbacks
+- Reactive engine events, progress reporting, and cancellation
 - Unit, integration, headless, and desktop UI test layers
-- Shared FlaUI/UIA3 page objects for WPF and WinUI 3
+- Shared FlaUI/UIA3 page objects for WPF, WinUI 3, and MAUI on Windows
 - A logical automation contract that tolerates framework-specific UIA trees
-- Failure screenshots and serialized access to the interactive desktop
+- Code coverage across the primary managed test layers
 
 ## Architecture
 
 ```text
-Clients
-  WPF | WinUI 3 | .NET MAUI | Headless
-                    |
-              Presentation
-                    |
-               Application
-                    |
-             Engine.Contracts
-                    |
-       +------------+-------------+-------------+
-       |            |             |             |
-    P/Invoke      C++/CLI        gRPC        Simulator
-```
-```
-Clients (WPF / WinUI / MAUI / Headless)
-        ↓
-Presentation
-        ↓
-Application
-        ↓
-Engine.Contracts
-        ↑
-Native Engine (external)
-```
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                                 CLIENT LAYERS                                │
-│                                                                              │
-│   WPF Client        WinUI Client        MAUI Client        Headless Client   │
-│   - Views/XAML      - Views/XAML        - Pages/XAML       - Console Runner  │
-│   - Resources       - Resources         - Resources        - DI Setup        │
-│   - Bootstrap       - Bootstrap         - Bootstrap        - Workflow        │
-└───────────────────────────────▲──────────────────────────────────────────────┘
-                               │
-┌──────────────────────────────▼────────────────────────────────┐
-│ Presentation                                                  │
-│ Shared Shell, Header, Footer, General, Screens, and           │
-│ RenderEngine view models                                      │
-└──────────────────────────────┬────────────────────────────────┘
-                               │
-┌──────────────────────────────▼────────────────────────────────┐
-│ Application                                                   │
-│ ProcessingService | NavigationService | AppStatusService      │
-└──────────────────────────────┬────────────────────────────────┘
-                               │
-┌──────────────────────────────▼────────────────────────────────┐
-│ Engine.Contracts                                              │
-│ IProcessingEngine | requests | results | progress | events    │
-└──────────────────────────────┬────────────────────────────────┘
-                               │ implemented by
-          ┌────────────────────┼────────────────────┐
-          ▼                    ▼                    ▼
-       P/Invoke             C++/CLI          gRPC / Simulator
+┌──────────────────────────────────────────────────────────────────────┐
+│ WPF Client       WinUI 3 Client       MAUI Client       Headless     │
+│ Platform views, resources, theme integration, and composition roots  │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Presentation                                                         │
+│ Shared shell, navigation, feature, status, and processing view models│
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Application                                                          │
+│ ProcessingService | NavigationService | AppStatusService             │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Engine.Contracts                                                     │
+│ IProcessingEngine | requests | results | progress | engine events    │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+                  selected at the composition root
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+          P/Invoke           C++/CLI           Simulator
+             │                  │
+             └─────────┬────────┘
+                       ▼
+                 Engine.Native
 ```
 
 Dependency direction points inward:
 
-- **Engine.Contracts** defines the engine protocol without UI or infrastructure
-  dependencies.
-- **Application** coordinates processing, navigation, and application status.
-- **Presentation** contains client-neutral view models built with
+- **Engine.Contracts** defines the processing boundary without UI or native
+  implementation details.
+- **Application** coordinates navigation, status, and processing workflows.
+- **Presentation** provides client-neutral view models using
   CommunityToolkit.Mvvm.
-- **Engine.Adapters** contains replaceable engine integrations.
-- **Clients** contains platform-specific views and composition roots.
-- **Tests** separates fast logic tests from interactive desktop automation.
+- **Engine.Adapters** translates between managed contracts and concrete engine
+  technologies.
+- **Engine.Native** exposes a small C-compatible API for native processing.
+- **Clients** own platform views, resources, and the final adapter selection.
+- **Tests** separate fast logic tests from native integration and interactive
+  desktop automation.
 
-## Architecture documentation
+The adapter is the managed/unmanaged boundary. It maps managed requests to the
+native DTO, keeps callback state alive for the operation, translates native
+progress and completion callbacks, and returns managed results. Native code
+does not depend on application or presentation types.
 
-- [Processing and native integration](docs/processing-and-native-integration.md)
-  explains `IProcessingService`, `IProcessingEngine`, `IEngineEventBus`,
-  progress reporting, cancellation, and the planned unmanaged callback bridge.
+For the detailed workflow, see
+[Processing and native integration](docs/processing-and-native-integration.md).
 
 ## Solution layout
 
 ```text
 src/
 ├── Application/
+├── Domain/
 ├── Engine.Contracts/
+├── Engine.Native/
 ├── Presentation/
 ├── Engine.Adapters/
 │   ├── Engine.Adapter.PInvoke/
@@ -115,131 +107,119 @@ tests/
 │   ├── Application.Tests/
 │   └── Presentation.Tests/
 ├── Integration/
+│   ├── Workflow.Tests/
+│   ├── PInvoke.Adapter.Tests/
+│   └── CppCli.Adapter.Tests/
 ├── Headless/
 └── UI/
     ├── UiTest.Infrastructure/
     ├── Wpf.UiTests/
     ├── WinUI.UiTests/
-    └── Maui.UiTests/  # New MAUI UI test suite
+    └── Maui.UiTests/
 ```
 
 The solution entry point is [`ClientAgnostic.sln`](ClientAgnostic.sln).
 
-## Client implementation
+## Client implementations
 
-### WPF
+### WPF and WinUI 3
 
-The WPF client provides the shared shell workflow with platform-specific views,
-resources, dialog integration, and dependency injection.
+Both Windows clients implement the same shared shell workflow and view-model
+navigation. Each client owns its XAML, resources, dialogs, theme integration,
+and startup composition. Their automation IDs and logical UI behavior remain
+aligned so the same UI test infrastructure can exercise both frameworks.
 
-### WinUI 3
-
-The WinUI client is an unpackaged, self-contained `win-x64` application. It
-includes:
-
-- A dependency-injected `ShellView`
-- Header navigation bound directly to the shared `HeaderViewModel`
-- General, Screens, and Render Engine views
-- Shared view-model selection through application-level data templates
-- Application-level WinUI styles and accent buttons
-- Light and Dark theme selection in the persistent footer
-
-The WPF and WinUI clients intentionally share view models and logical behavior,
-not framework-specific controls.
+The WinUI client is an unpackaged, self-contained `win-x64` application and
+uses application-level data templates, accent button styles, and persistent
+Light/Dark theme selection.
 
 ### .NET MAUI
 
-The MAUI client reuses the same shell, navigation, and feature view models as
-the Windows desktop clients. Its platform layer stays small:
+The MAUI client reuses the same shell, navigation, feature, and processing view
+models. Its platform layer contains small `ContentView` implementations, a
+shared-view-model-to-MAUI-view host, theme integration, and its composition
+root. Windows UI automation follows the same logical page-object contract as
+WPF and WinUI.
 
-- MAUI `ContentView` implementations for Header, Footer, General, Screens, and
-  Render Engine
-- A single view host that maps shared view models to MAUI views
-- Light and Dark theme selection in the persistent footer
-- The cross-platform simulator registered behind `IProcessingEngine`
+### Headless
 
-Only the XAML controls, theme interaction, view mapping, and dependency
-registration are MAUI-specific.
+The headless client runs the application workflow without a graphical UI. It
+provides a lightweight executable example and an additional integration seam
+for automated tests.
 
 ## Current status
 
 | Area | Status |
 | --- | --- |
-| Engine contracts | Processing contracts, progress models, and reactive engine events implemented |
-| P/Invoke adapter | Implements the processing contract with a managed progress simulation; native calls remain future work |
-| C++/CLI adapter | Scaffold with native source files |
-| gRPC adapter | Scaffold with a protocol file |
-| Simulator adapter | Cross-platform progress and cancellation workflow implemented |
-| WPF client | Shared shell, navigation, views, and processing workflow implemented |
-| WinUI client | Shared shell workflow, native resources, themes, and views implemented |
-| MAUI client | Shared shell, navigation, views, themes, and simulated processing implemented |
-| Headless client | Console client and headless workflow coverage present |
-| Tests | Unit, integration, headless, WPF UI, WinUI UI, and MAUI UI suites implemented |  # Updated to include MAUI UI tests
+| Engine contracts | Requests, results, progress, cancellation, and reactive engine events implemented |
+| Native engine | C-compatible request DTO and progress/completion callback API implemented |
+| P/Invoke adapter | Calls `Engine.Native` and maps native callbacks to managed progress and results |
+| C++/CLI adapter | Calls `Engine.Native` through a managed C++/CLI bridge |
+| Simulator adapter | Cross-platform managed processing workflow implemented |
+| gRPC adapter | Architectural scaffold; transport workflow is not implemented |
+| WPF client | Shared shell, navigation, views, themes, and processing workflow implemented |
+| WinUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
+| MAUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
+| Tests | Unit, workflow, native-adapter, headless, and three desktop UI suites implemented |
 
 ## Prerequisites
 
 - Windows 10 version 1809 or newer
 - .NET 9 SDK
-- Visual Studio 2022 with the workloads needed for the projects you build:
-  - .NET desktop development for WPF
-  - Windows application development for WinUI 3
-  - .NET Multi-platform App UI development for MAUI
-  - Desktop development with C++ when the C++/CLI adapter becomes active
+- Visual Studio 2022 with:
+  - .NET desktop development
+  - Windows application development
+  - .NET Multi-platform App UI development
+  - Desktop development with C++
 
-## Quick start
+The C++/CLI and native projects target x64. Use an x64 solution configuration
+when building the complete solution or running native adapter tests.
 
-Build the implemented Windows clients:
+## Build
+
+Managed clients can be built independently with the .NET CLI:
 
 ```powershell
 dotnet build src/Clients/WpfClient/WpfClient.csproj
 dotnet build src/Clients/WinUIClient/WinUIClient.csproj
 dotnet build src/Clients/MauiClient/MauiClient.csproj -f net9.0-windows10.0.19041.0
-```
-
-Build the complete solution when all required platform workloads are installed:
-
-```powershell
-dotnet restore ClientAgnostic.sln
-dotnet build ClientAgnostic.sln
-```
-
-The headless client can be built independently:
-
-```powershell
 dotnet build src/Clients/HeadlessClient/HeadlessClient.csproj
+```
+
+Because the complete solution contains native C++ and C++/CLI projects, build
+it with Visual Studio or Visual Studio MSBuild:
+
+```powershell
+msbuild ClientAgnostic.sln /restore /t:Build /p:Configuration=Debug /p:Platform=x64
 ```
 
 ## Testing
 
-The solution follows a test-pyramid strategy:
-
-```text
-              UI              Few, slowest, interactive
-           Headless
-         Integration
-            Unit              Many, fastest
-```
+The solution uses a layered test strategy:
 
 | Test layer | Purpose |
 | --- | --- |
-| **Unit** | Tests Application and Presentation logic in isolation |
-| **Integration** | Verifies service registration and multi-component workflows |
-| **Headless** | Exercises complete workflows without launching a graphical client |
-| **UI** | Validates critical WPF, WinUI 3, and MAUI journeys through FlaUI/UIA3 |
+| **Unit** | Application and Presentation behavior in isolation |
+| **Workflow** | Dependency registration and multi-component workflows |
+| **Adapter integration** | Real P/Invoke and C++/CLI calls into `Engine.Native` |
+| **Headless** | Complete workflows without a graphical client |
+| **UI** | Critical WPF, WinUI 3, and MAUI journeys through FlaUI/UIA3 |
 
-Run non-interactive tests:
+Run the managed, non-interactive suites:
 
 ```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
 dotnet test tests/Unit/Presentation.Tests/Presentation.Tests.csproj
 dotnet test tests/Integration/Workflow.Tests/Integration.Tests.csproj
-dotnet test tests/Integration/PInvoke.Adapter.Tests/PInvoke.Adapter.Tests.csproj -p:Platform=x64
 dotnet test tests/Headless/Headless.Tests.csproj
 ```
 
-`CppCli.Adapter.Tests` must first be built as x64 with Visual Studio MSBuild
-because it references a C++ project. The compiled tests can then be run with
-`dotnet test tests/Integration/CppCli.Adapter.Tests/CppCli.Adapter.Tests.csproj --no-build -p:Platform=x64`.
+Build the x64 solution before running the native adapter suites:
+
+```powershell
+dotnet test tests/Integration/PInvoke.Adapter.Tests/PInvoke.Adapter.Tests.csproj --no-build -p:Platform=x64
+dotnet test tests/Integration/CppCli.Adapter.Tests/CppCli.Adapter.Tests.csproj --no-build -p:Platform=x64
+```
 
 ### Desktop UI automation
 
@@ -251,97 +231,114 @@ dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
 dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj
 ```
 
-The three client suites use the same logical page objects and automation IDs:
+`UiTest.Infrastructure` provides:
 
-```text
-UiTest.Infrastructure
-├── generic test lifecycle and application fixture contract
-├── desktop mutex
-├── waits and failure screenshots
-├── automation IDs and contract verification
-└── shared shell, component, and page objects
-```
+- A common application fixture contract and lifecycle
+- Shared automation IDs and logical contract verification
+- Shared shell, component, and page objects
+- Explicit waits and failure screenshots
+- A desktop mutex to prevent concurrent UI manipulation
 
-Each client keeps only its executable launcher and client-specific tests. A
-named Windows mutex prevents WPF and WinUI test processes from manipulating the
-desktop concurrently.
+The client test projects contain only their executable launcher and
+framework-specific test cases. Current journeys cover startup, automation
+contract verification, header navigation, processing with terminal status and
+full progress, and theme switching where supported.
 
-Current UI coverage includes:
-
-- Application startup
-- Shared automation-contract verification
-- Header navigation across shared views
-- Load-and-process workflow with terminal status and 100% progress
-- WinUI Light/Dark theme selection
-- MAUI UI interactions and workflows  # New coverage detail for MAUI
-
-At the latest verification, all 4 WPF UI tests, all 5 WinUI UI tests, and all MAUI UI tests passed.
-
-## MAUI UI automation
-
-A MAUI desktop UI suite is available at `tests/UI/Maui.UiTests` and follows the same fixture/page-object pattern used by the WPF and WinUI suites.
-
-### Run MAUI UI tests
-
-Build the MAUI Windows target, then run the suite:
-
-```powershell
-dotnet build src/Clients/MauiClient/MauiClient.csproj -f net9.0-windows10.0.19041.0
-dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj
-```
-
-If executable discovery differs on your machine, set `MAUI_CLIENT_EXE` to the built `MauiClient.exe` path.
-
-### Notes
-
-- UI tests require an unlocked, interactive Windows desktop.
-- `UiTest.Infrastructure` page objects and automation IDs are shared across WPF, WinUI, and MAUI.
-- The current `scripts/coverage.ps1` UI coverage flow still targets the WPF UI suite only.
+If MAUI executable discovery differs on your machine, set `MAUI_CLIENT_EXE` to
+the built `MauiClient.exe` path.
 
 ## Code coverage
 
-Collect and merge Application unit, Presentation unit, Integration, Headless,
-and WPF UI coverage:
+The coverage workflow spans the managed application, both native adapter
+boundaries, the C++ engine, and all three desktop clients. It builds the x64
+solution, runs every test project, validates the generated results, and
+produces merged HTML and Cobertura reports:
 
 ```powershell
 .\scripts\coverage.ps1
 ```
 
-The script restores the repository-local coverage tools, runs each test layer,
-and writes three reports:
+Use `-SkipBuild` when the complete `Debug | x64` solution is already built:
 
-```text
-artifacts/
-├── coverage/
-│   ├── application-unit/
-│   ├── presentation-unit/
-│   ├── integration/
-│   ├── headless/
-│   └── ui/
-├── coverage-report/
-│   └── index.html
-├── ui-coverage-report/
-│   └── index.html
-└── overall-coverage-report/
-    └── index.html
+```powershell
+.\scripts\coverage.ps1 -SkipBuild
 ```
 
-`coverage-report` is the fast non-UI baseline, `ui-coverage-report` contains
-code exercised through the WPF process, and `overall-coverage-report` merges
-every test layer without double-counting production lines.
-
-WPF UI coverage requires an interactive Windows desktop. Generate only the
-non-UI report in a non-interactive environment:
+Use `-SkipUi` when no unlocked interactive desktop is available:
 
 ```powershell
 .\scripts\coverage.ps1 -SkipUi
 ```
 
-WinUI client-process coverage is not yet included.
+### What is measured
 
-code-coverage report
-<img width="1542" height="786" alt="image" src="https://github.com/user-attachments/assets/d2a03e91-8af5-4f7d-a694-3e676676a2a2" />
+| Coverage path | Collector | Code measured |
+| --- | --- | --- |
+| Unit, workflow, and headless tests | Coverlet | Contracts, Application, and Presentation |
+| Adapter integration tests | Microsoft Code Coverage | P/Invoke, C++/CLI, and `Engine.Native` |
+| Desktop UI tests | `dotnet-coverage` | WPF, WinUI, MAUI, and the shared managed layers loaded by each client |
 
+Native coverage uses the Debug x64 PDB and Microsoft native instrumentation.
+The Debug `Engine.Native` build enables the linker support required for static
+instrumentation; Release binaries are not modified for coverage.
+
+The native adapter suites intentionally exercise the same engine through two
+boundaries:
+
+```text
+PInvoke.Adapter.Tests ──► P/Invoke adapter ──┐
+                                             ├──► Engine.Native
+CppCli.Adapter.Tests  ──► C++/CLI adapter ───┘
+```
+
+ReportGenerator merges matching source lines rather than counting the native
+engine twice.
+
+### Reports
+
+Each invocation writes to a timestamped directory so an open report or Visual
+Studio Test Explorer cannot lock the next run:
+
+```text
+.coverage/runs/<timestamp>/
+├── raw/
+├── non-ui-report/
+├── ui-report/
+└── overall-report/
+```
+
+| Report | Contents |
+| --- | --- |
+| `non-ui-report/index.html` | Unit, workflow, headless, P/Invoke, C++/CLI, and native C++ coverage |
+| `ui-report/index.html` | Coverage observed through the WPF, WinUI, and MAUI client processes |
+| `overall-report/index.html` | Deduplicated union of every non-UI and UI coverage result |
+
+The script performs sanity checks before reporting success:
+
+- Every `IsTestProject=true` project must be registered in the workflow.
+- Every suite must discover at least one test and report zero failures.
+- Every expected coverage file must exist and contain coverable lines.
+- Covered-line totals must be internally consistent.
+
+### Latest verified snapshot
+
+The latest full local run completed all 50 tests and produced:
+
+| Metric | Result |
+| --- | ---: |
+| Line coverage | **92.2%** — 585 / 634 |
+| Branch coverage | **70.1%** — 94 / 134 |
+| Method coverage | **90.4%** — 142 / 157 |
+| `Engine.Native` line coverage | **85.1%** |
+| C++/CLI adapter line coverage | **92.4%** |
+| P/Invoke adapter line coverage | **92.5%** |
+
+![Overall managed and native code coverage summary](docs/coverage-summary.png)
+
+Coverage percentages are a diagnostic snapshot rather than a release gate.
+Native branch information is less granular than managed branch coverage, so
+native line coverage and the adapter integration tests are the primary signals
+for this POC.
 
 ## Dependency management
 
@@ -359,17 +356,24 @@ Notable dependencies include:
 - MSTest and Moq
 - FlaUI.Core and FlaUI.UIA3
 
-## Contributing
-
-This repository is an architectural POC. When contributing:
+## Design guidelines
 
 1. Keep UI-independent behavior out of client projects.
 2. Depend on `Engine.Contracts`, not concrete adapters.
-3. Select concrete adapters in each client composition root.
-4. Keep WPF and WinUI automation IDs logically aligned.
-5. Put cross-client page-object behavior in `UiTest.Infrastructure`.
-6. Add tests at the lowest reliable test layer.
-7. Keep package versions centralized.
+3. Select the concrete adapter only at the client composition root.
+4. Keep managed/native conversion and callback lifetime handling in adapters.
+5. Keep cross-client page-object behavior in `UiTest.Infrastructure`.
+6. Maintain logically aligned automation IDs across clients.
+7. Add tests at the lowest reliable test layer.
+8. Keep package versions centralized.
+
+## Roadmap
+
+- Implement the gRPC adapter workflow
+- Extend native processing beyond the current demonstration operation
+- Add CI build and test pipelines
+- Expand code coverage collection to WinUI and MAUI client processes
+- Add packaging and release automation
 
 ## Notes
 
