@@ -1,0 +1,108 @@
+<UserControl x:Class="WpfClient.Views.ChatView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.AutomationId="Chat.View">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock FontSize="20"
+                       FontWeight="SemiBold"
+                       Text="AI Processing Assistant" />
+            <TextBlock Margin="0,4,0,12"
+                       Foreground="DimGray"
+                       Text="Ollama can request the allowlisted process_file application tool." />
+
+            <ItemsControl ItemsSource="{Binding Suggestions}"
+                          AutomationProperties.AutomationId="Chat.Suggestions">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Margin="0,0,8,12"
+                                Content="{Binding Label}"
+                                Command="{Binding DataContext.SelectSuggestionCommand,
+                                    RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <ListBox Grid.Row="1"
+                 Margin="0,0,0,12"
+                 ItemsSource="{Binding Messages}"
+                 AutomationProperties.AutomationId="Chat.Messages">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="4,6">
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{Binding Speaker}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   MaxWidth="680"
+                                   Text="{Binding Text}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2"
+                    Margin="0,0,0,12"
+                    Visibility="{Binding IsBusy,
+                        Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ProgressBar Height="6"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="{Binding ProgressPercent}"
+                         IsIndeterminate="{Binding IsProgressIndeterminate}"
+                         AutomationProperties.AutomationId="Chat.ProgressBar" />
+            <TextBlock Margin="0,5,0,0"
+                       Text="{Binding ProgressMessage}"
+                       AutomationProperties.AutomationId="Chat.ProgressMessage" />
+        </StackPanel>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox MinHeight="56"
+                     Padding="8"
+                     AcceptsReturn="True"
+                     Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     AutomationProperties.AutomationId="Chat.Input" />
+
+            <Button Grid.Column="1"
+                    MinWidth="80"
+                    Margin="8,0,0,0"
+                    Content="Send"
+                    Command="{Binding SendCommand}"
+                    AutomationProperties.AutomationId="Chat.SendButton" />
+
+            <Button Grid.Column="2"
+                    MinWidth="80"
+                    Margin="8,0,0,0"
+                    Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    AutomationProperties.AutomationId="Chat.CancelButton" />
+        </Grid>
+    </Grid>
+</UserControl>

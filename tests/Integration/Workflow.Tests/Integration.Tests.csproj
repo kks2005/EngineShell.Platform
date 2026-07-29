@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\AI.Adapters\AI.Adapter.Ollama\AI.Adapter.Ollama.csproj" />
     <ProjectReference Include="..\..\..\src\Application\Application.csproj" />
     <ProjectReference Include="..\..\..\src\Presentation\Presentation.csproj" />
   </ItemGroup>

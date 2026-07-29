@@ -22,6 +22,8 @@ P/Invoke, or a managed simulator.
 - Native C++ integration through both P/Invoke and C++/CLI adapters
 - Request/result mapping and native-to-managed progress callbacks
 - Reactive engine events, progress reporting, and cancellation
+- A WPF AI chat workflow using local Ollama structured output and allowlisted
+  application tools
 - Unit, integration, headless, and desktop UI test layers
 - Shared FlaUI/UIA3 page objects for WPF, WinUI 3, and MAUI on Windows
 - A logical automation contract that tolerates framework-specific UIA trees
@@ -42,7 +44,7 @@ P/Invoke, or a managed simulator.
                                 │
 ┌───────────────────────────────▼──────────────────────────────────────┐
 │ Application                                                          │
-│ ProcessingService | NavigationService | AppStatusService             │
+│ ProcessingService | ChatService | AI tool dispatch | navigation      │
 └───────────────────────────────┬──────────────────────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────────────────────┐
@@ -69,6 +71,8 @@ Dependency direction points inward:
   CommunityToolkit.Mvvm.
 - **Engine.Adapters** translates between managed contracts and concrete engine
   technologies.
+- **AI.Adapters** translates an AI provider response into a small,
+  application-owned plan.
 - **Engine.Native** exposes a small C-compatible API for native processing.
 - **Clients** own platform views, resources, and the final adapter selection.
 - **Tests** separate fast logic tests from native integration and interactive
@@ -82,6 +86,36 @@ does not depend on application or presentation types.
 For the detailed workflow, see
 [Processing and native integration](docs/processing-and-native-integration.md).
 
+## AI-assisted processing (WPF POC)
+
+The WPF client includes a deliberately small vertical slice that lets a user
+request file processing in natural language. Ollama and the selected model run
+locally; the POC does not use a cloud AI API or require an API key.
+
+```text
+ChatView
+  → ChatViewModel
+  → ChatService
+  → local Ollama structured plan
+  → allowlisted tool dispatch
+  → ProcessingService
+  → IProcessingEngine
+  → Engine.Native
+```
+
+The AI proposes a structured action but cannot invoke application services
+directly. The application validates the allowlisted `process_file` tool,
+executes the existing processing pipeline, displays native progress, and
+reports a verified result. The view also includes editable prompt suggestions,
+deterministic capability help, and cancellation.
+
+Only WPF opts into the view for now, but the orchestration and processing
+workflow remain outside WPF-specific code.
+
+For architecture, local setup, configuration, troubleshooting, tests, and
+current limitations, see
+[AI-assisted processing](docs/ai-assisted-processing.md).
+
 ## Solution layout
 
 ```text
@@ -91,6 +125,8 @@ src/
 ├── Engine.Contracts/
 ├── Engine.Native/
 ├── Presentation/
+├── AI.Adapters/
+│   └── AI.Adapter.Ollama/
 ├── Engine.Adapters/
 │   ├── Engine.Adapter.PInvoke/
 │   ├── Engine.Adapter.CppCli/
@@ -157,7 +193,7 @@ for automated tests.
 | C++/CLI adapter | Calls `Engine.Native` through a managed C++/CLI bridge |
 | Simulator adapter | Cross-platform managed processing workflow implemented |
 | gRPC adapter | Architectural scaffold; transport workflow is not implemented |
-| WPF client | Shared shell, navigation, views, themes, and processing workflow implemented |
+| WPF client | Shared shell, navigation, views, themes, processing, and experimental Ollama chat workflow implemented |
 | WinUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
 | MAUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
 | Tests | Unit, workflow, native-adapter, headless, and three desktop UI suites implemented |

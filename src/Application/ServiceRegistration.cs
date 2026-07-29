@@ -13,6 +13,8 @@ public static class ServiceRegistration
     {
         services.AddSingleton<IEngineEventBus, EngineEventBus>();
         services.AddSingleton<IProcessingService, ProcessingService>();
+        services.AddSingleton<IAIToolDispatcher, AIToolDispatcher>();
+        services.AddSingleton<IChatService, ChatService>();
         services.AddSingleton<IAppStatusService, AppStatusService>();
         services.AddSingleton<INavigationService, NavigationService>();
 

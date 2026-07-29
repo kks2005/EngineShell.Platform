@@ -7,7 +7,8 @@ namespace Presentation;
 public static class PresentationServiceRegistration
 {
     public static IServiceCollection AddPresentation(
-        this IServiceCollection services)
+        this IServiceCollection services,
+        bool includeAIChat = false)
     {
         services.AddSingleton<HeaderViewModel>();
         services.AddSingleton<FooterViewModel>();
@@ -32,6 +33,16 @@ public static class PresentationServiceRegistration
                 "RenderEngine",
                 "\uE8B5",
                 sp.GetRequiredService<RenderEngineViewModel>()));
+
+        if (includeAIChat)
+        {
+            services.AddSingleton<ChatViewModel>();
+            services.AddSingleton<NavigationItem>(sp =>
+                new NavigationItem(
+                    "AI Chat",
+                    "\uE8BD",
+                    sp.GetRequiredService<ChatViewModel>()));
+        }
 
         services.AddSingleton<ShellViewModel>();
 
