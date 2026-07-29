@@ -8,7 +8,9 @@ framework-specific code isolated.
 Processing implementations are hidden behind `IProcessingEngine`. A client
 selects an adapter at its composition root, while the rest of the application
 remains unaware of whether processing is performed by native C++, C++/CLI,
-P/Invoke, or a managed simulator.
+P/Invoke, or a managed simulator. This applies dependency inversion: policies
+depend on the stable engine contract, and the executable chooses the concrete
+implementation only when the application is composed.
 
 > This repository is under active development. It demonstrates architectural
 > patterns and test infrastructure; it is not intended to be a
@@ -32,32 +34,32 @@ P/Invoke, or a managed simulator.
 ## Architecture
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ WPF Client       WinUI 3 Client       MAUI Client       Headless     │
-│ Platform views, resources, theme integration, and composition roots  │
-└───────────────────────────────┬──────────────────────────────────────┘
-                                │
-┌───────────────────────────────▼──────────────────────────────────────┐
-│ Presentation                                                         │
-│ Shared shell, navigation, feature, status, and processing view models│
-└───────────────────────────────┬──────────────────────────────────────┘
-                                │
-┌───────────────────────────────▼──────────────────────────────────────┐
-│ Application                                                          │
-│ ProcessingService | ChatService | AI tool dispatch | navigation      │
-└───────────────────────────────┬──────────────────────────────────────┘
-                                │
-┌───────────────────────────────▼──────────────────────────────────────┐
-│ Engine.Contracts                                                     │
-│ IProcessingEngine | requests | results | progress | engine events    │
-└───────────────────────────────┬──────────────────────────────────────┘
-                                │
-                  selected at the composition root
-             ┌──────────────────┼──────────────────┐
-             ▼                  ▼                  ▼
-          P/Invoke           C++/CLI           Simulator
-             │                  │
-             └─────────┬────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ WPF Client             WinUI 3 Client             MAUI Client│
+│ Platform views, resources, themes, and composition roots     │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Presentation                                                 │
+│ Shared MVVM shell, navigation, feature, and status models    │
+└────────────────────────────┬─────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Application                                                  │◄──── Headless / future
+│ ProcessingService | ChatService | tool dispatch | navigation │      non-MVVM hosts
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Engine.Contracts                                             │
+│ IProcessingEngine | requests | results | progress | events   │
+└────────────────────────────┬─────────────────────────────────┘
+                             │ runtime implementation selected at composition
+                  ┌──────────┼──────────┐
+                  ▼          ▼          ▼
+               P/Invoke   C++/CLI   Simulator
+                  │          │
+                  └────┬─────┘
                        ▼
                  Engine.Native
 ```
@@ -67,8 +69,8 @@ Dependency direction points inward:
 - **Engine.Contracts** defines the processing boundary without UI or native
   implementation details.
 - **Application** coordinates navigation, status, and processing workflows.
-- **Presentation** provides client-neutral view models using
-  CommunityToolkit.Mvvm.
+- **Presentation** provides shared MVVM view models for data-binding client
+  frameworks using CommunityToolkit.Mvvm.
 - **Engine.Adapters** translates between managed contracts and concrete engine
   technologies.
 - **AI.Adapters** translates an AI provider response into a small,
@@ -77,6 +79,75 @@ Dependency direction points inward:
 - **Clients** own platform views, resources, and the final adapter selection.
 - **Tests** separate fast logic tests from native integration and interactive
   desktop automation.
+
+### Dependency inversion and late adapter selection
+
+A conventional layered implementation can become tightly coupled when an
+application service references or constructs a concrete infrastructure layer:
+
+```text
+ProcessingService → PInvokeEngineAdapter
+```
+
+EngineShell avoids that dependency. `ProcessingService` and the shared view
+models know only `IProcessingEngine` and the DTOs in `Engine.Contracts`.
+Concrete engine adapters also reference the contract, but they do not
+reference Application, Presentation, or a client:
+
+```text
+                 compile-time dependencies
+
+Presentation ───────► Application ───────► Engine.Contracts
+                                              ▲
+                                              │ implements
+                         ┌────────────────────┼────────────────────┐
+                         │                    │                    │
+                 P/Invoke adapter      C++/CLI adapter      Simulator adapter
+```
+
+The dependency arrows therefore point toward the abstraction rather than from
+application policy toward infrastructure. This is the Dependency Inversion
+Principle; dependency injection supplies the Inversion of Control mechanism.
+
+The existing Presentation project is intentionally shared by MVVM-capable
+clients such as WPF, WinUI 3, and .NET MAUI. It is not intended to be the
+presentation layer for every possible client technology. A web application,
+API, command-line tool, background worker, or service can reuse Application,
+Engine.Contracts, and the selected adapters while supplying a presentation or
+host layer appropriate to that technology:
+
+```text
+                       Application + Engine.Contracts
+                                    ▲
+             ┌──────────────────────┼──────────────────────┐
+             │                      │                      │
+     MVVM Presentation       Headless / CLI host    Future API / service
+             ▲               own interaction layer    own endpoint layer
+       ┌─────┼─────┐
+       │     │     │
+      WPF  WinUI  MAUI
+```
+
+For production execution, the executable client is the composition root and
+the place that references both the abstraction and the selected
+implementation. Tests may provide their own isolated composition roots. For
+example, WPF currently makes the binding at startup:
+
+```csharp
+services.AddApplication();
+services.AddPresentation(includeAIChat: true);
+services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
+```
+
+That decision is intentionally made as late as possible. The same Application
+and Presentation assemblies can run with another adapter by changing the
+composition registration rather than their workflow code. MAUI demonstrates
+this by selecting P/Invoke on Windows and the simulator on other targets;
+tests can inject a mock or test implementation through the same contract.
+
+“Swappable” here means replaceable at composition time. It does not imply that
+the running UI currently supports hot-swapping engines during an active
+operation.
 
 The adapter is the managed/unmanaged boundary. It maps managed requests to the
 native DTO, keeps callback state alive for the operation, translates native
@@ -179,9 +250,16 @@ WPF and WinUI.
 
 ### Headless
 
-The headless client runs the application workflow without a graphical UI. It
-provides a lightweight executable example and an additional integration seam
-for automated tests.
+`HeadlessClient` is currently a minimal executable scaffold. Its project
+references Application directly and does not reference the shared MVVM
+Presentation project, establishing the intended dependency boundary for a
+future CLI, worker, service, or API host. Its executable workflow is not
+implemented yet.
+
+`Headless.Tests` serves a different purpose: it composes shared view models and
+application services without creating WPF, WinUI, or MAUI controls. Those tests
+verify that MVVM workflows can run without a graphical desktop, but they are
+not a replacement for a presentation-free headless executable.
 
 ## Current status
 
@@ -196,6 +274,7 @@ for automated tests.
 | WPF client | Shared shell, navigation, views, themes, processing, and experimental Ollama chat workflow implemented |
 | WinUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
 | MAUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
+| Headless client | Presentation-free executable scaffold; application workflow is not implemented yet |
 | Tests | Unit, workflow, native-adapter, headless, and three desktop UI suites implemented |
 
 ## Prerequisites
@@ -395,17 +474,21 @@ Notable dependencies include:
 ## Design guidelines
 
 1. Keep UI-independent behavior out of client projects.
-2. Depend on `Engine.Contracts`, not concrete adapters.
-3. Select the concrete adapter only at the client composition root.
-4. Keep managed/native conversion and callback lifetime handling in adapters.
-5. Keep cross-client page-object behavior in `UiTest.Infrastructure`.
-6. Maintain logically aligned automation IDs across clients.
-7. Add tests at the lowest reliable test layer.
-8. Keep package versions centralized.
+2. Make Application and Presentation depend on `Engine.Contracts`, never a
+   concrete adapter.
+3. Keep adapters dependent on the contract rather than Application,
+   Presentation, or client projects.
+4. Select the concrete adapter only at the executable composition root.
+5. Keep managed/native conversion and callback lifetime handling in adapters.
+6. Keep cross-client page-object behavior in `UiTest.Infrastructure`.
+7. Maintain logically aligned automation IDs across clients.
+8. Add tests at the lowest reliable test layer.
+9. Keep package versions centralized.
 
 ## Roadmap
 
 - Implement the gRPC adapter workflow
+- Implement the presentation-free HeadlessClient workflow
 - Extend native processing beyond the current demonstration operation
 - Add CI build and test pipelines
 - Expand code coverage collection to WinUI and MAUI client processes

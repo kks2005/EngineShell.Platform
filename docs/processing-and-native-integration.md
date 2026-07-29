@@ -17,9 +17,10 @@ The processing design separates three concerns:
 2. The application layer validates and coordinates that operation.
 3. An engine adapter translates the operation into a concrete engine
    implementation.
+4. The executable composition root selects the adapter.
 
 ```text
-RenderEngineViewModel
+RenderEngineViewModel or ChatService
         │
         ▼
 IProcessingService
@@ -27,14 +28,46 @@ IProcessingService
         ▼
 IProcessingEngine
         │
+        │ selected by the composition root
+        ▼
+P/Invoke | C++/CLI | Simulator
+        │
         ├── Task<ProcessingResult>
         ├── IProgress<ProcessingProgress>
         ├── CancellationToken
-        └── IEngineEventBus
+        └── IEngineEventBus (adapter lifecycle events)
 ```
 
 This boundary allows the same presentation and application layers to work with
-managed simulation, P/Invoke, C++/CLI, gRPC, or a test double.
+managed simulation, P/Invoke, C++/CLI, or a test double. A gRPC adapter project
+exists as an architectural scaffold, but its transport workflow is not
+implemented.
+
+## Dependency direction and adapter selection
+
+Application and Presentation reference `Engine.Contracts`; they do not
+reference P/Invoke, C++/CLI, or another concrete engine adapter. Each engine
+adapter implements the same contract and depends inward on that abstraction:
+
+```text
+Presentation → Application → Engine.Contracts
+                                  ▲
+                                  │ implements
+                     P/Invoke / C++/CLI / Simulator
+```
+
+The executable composition root references both sides and binds one
+implementation at startup:
+
+```csharp
+services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
+```
+
+Changing this registration replaces the engine without changing shared
+application or presentation workflows. This is composition-time replacement,
+not runtime hot-swapping. See the
+[Architecture section](../README.md#dependency-inversion-and-late-adapter-selection)
+for the broader dependency-inversion rationale.
 
 ## Processing pipeline
 
@@ -98,7 +131,8 @@ Presentation → Application abstraction → Engine abstraction
 
 ## `IProcessingEngine`
 
-`IProcessingEngine` is the lowest client-neutral engine abstraction:
+`IProcessingEngine` is the presentation- and adapter-neutral engine
+abstraction:
 
 ```csharp
 public interface IProcessingEngine
@@ -110,8 +144,8 @@ public interface IProcessingEngine
 }
 ```
 
-Every engine adapter exposes the same managed contract regardless of its
-implementation technology.
+Every implemented engine adapter exposes the same managed contract regardless
+of its implementation technology.
 
 | Value | Responsibility |
 | --- | --- |
@@ -124,6 +158,46 @@ implementation technology.
 The asynchronous return type does not require the underlying engine to be
 natively asynchronous. An adapter can translate a callback-based or
 thread-based native API into a managed `Task`.
+
+## Native C ABI
+
+`Engine.Native` exposes a small C-compatible boundary rather than managed
+types:
+
+```cpp
+typedef struct EngineRequestDto
+{
+    const char* inputPath;
+    const char* outputPath;
+} EngineRequestDto;
+
+typedef void (*ProgressCallback)(
+    int percentComplete,
+    const char* message,
+    void* context);
+
+typedef void (*CompletionCallback)(
+    int success,
+    const char* outputPath,
+    void* context);
+
+int Engine_Process(
+    const EngineRequestDto* request,
+    ProgressCallback onProgress,
+    CompletionCallback onCompletion,
+    void* context);
+
+void Engine_Cancel();
+```
+
+The native library does not reference `Engine.Contracts` or managed DTOs. Each
+adapter maps `ProcessingRequest` into `EngineRequestDto`, invokes the C API,
+and maps callbacks and return codes back into managed contract types.
+
+The request strings are borrowed for the synchronous call and must not be
+retained by native code. Callback strings are also temporary; adapters copy
+them before returning from the callback. The C ABI uses integers rather than a
+C++ `bool` for stable success values across the DLL boundary.
 
 ## `IEngineEventBus`
 
@@ -153,7 +227,8 @@ Supported event categories are:
 - `Error`
 
 An adapter publishes an event once, and any interested component may observe
-it:
+it. `RenderEngineViewModel` and the adapter integration tests are the current
+subscribers; logging and telemetry are possible future subscribers:
 
 ```text
 Engine adapter
@@ -161,13 +236,13 @@ Engine adapter
       ▼
 IEngineEventBus
       ├──▶ status view model
-      ├──▶ diagnostic logger
-      ├──▶ telemetry
       └──▶ test observer
 ```
 
 The publisher does not reference any subscriber directly. Subscribers own and
-dispose their subscriptions.
+dispose their subscriptions. The current `Subject<EngineEvent>` delivers
+events synchronously on the publishing thread; the event bus does not perform
+UI dispatching or serialize concurrent publishers.
 
 ## Progress versus engine events
 
@@ -216,8 +291,11 @@ Task<ProcessingResult>
 ```
 
 The adapter is an anti-corruption boundary: native calling conventions,
-pointers, error codes, callback correlation, and resource ownership do not
-escape into the application or presentation layers.
+pointers, error codes, callback routing, and resource ownership do not escape
+into the application or presentation layers. P/Invoke uses per-call delegate
+closures and does not need the native `context` value. C++/CLI passes a
+per-operation context so native callbacks can recover the correct managed
+operation.
 
 ## Callback mapping
 
@@ -232,6 +310,11 @@ escape into the application or presentation layers.
 
 Lifecycle events are managed application concerns and are published by the
 adapters rather than by the native engine.
+
+`Engine_Process` invokes the completion callback only for successful
+processing in the current native implementation. Invalid input and
+cancellation are communicated through its integer return code, which each
+adapter maps into a failed result or cancelled task.
 
 ## Callback lifetime and memory safety
 
@@ -254,9 +337,18 @@ The P/Invoke adapter keeps delegates strongly referenced for the synchronous
 call. The C++/CLI adapter uses a `gcroot` callback context to route callbacks
 to the correct managed operation.
 
+The current POC assumes that caller-provided progress handlers do not throw.
+A production adapter should catch exceptions around managed callback targets
+and retain them for managed handling after `Engine_Process` returns rather
+than allowing them to unwind across the native boundary.
+
 ## Threading and synchronization
 
-Native callbacks may arrive on arbitrary native worker threads.
+The current native implementation is synchronous: callbacks execute on the
+same thread that calls `Engine_Process`. Both adapters move that call to a
+thread-pool task, so native callbacks currently originate on that worker
+thread. A future asynchronous native engine could invoke them on other native
+threads.
 
 The adapter should:
 
@@ -269,12 +361,14 @@ The adapter should:
 
 `Progress<T>` normally captures the synchronization context on which it is
 created. In the current clients, the view model creates it on the UI thread, so
-its callback can safely update observable properties.
+progress callbacks can safely update observable properties.
 
-The adapters run synchronous native work on a worker task. Progress is reported
-through the caller-provided `IProgress<T>`, while lifecycle events are
-published before and after the awaited worker task so UI subscribers are not
-updated directly from the native worker thread.
+Lifecycle events have different behavior. The P/Invoke adapter publishes its
+start and terminal events outside the native worker function. The C++/CLI
+adapter currently publishes from its worker operation. Because
+`EngineEventBus` does not marshal threads, any UI subscriber used with the
+C++/CLI adapter must dispatch to its UI context. Aligning lifecycle-event
+scheduling across adapters remains a worthwhile future refinement.
 
 ## Cancellation
 
@@ -309,6 +403,20 @@ implemented by the current `ProcessingService`. Its intended relationship to
 per-operation cancellation should be finalized with the native engine
 lifecycle.
 
+In the current adapters:
+
+- P/Invoke registers the cancellation token to call `Engine_Cancel`
+  immediately.
+- C++/CLI observes the token during progress callbacks and then calls
+  `Engine_Cancel`.
+- Native processing returns `-1`; the adapters complete the managed task as
+  cancelled.
+
+`Engine_Cancel` controls one process-wide atomic flag. The native POC therefore
+supports one active operation at a time and is not designed for concurrent or
+independently cancellable operations. A production API would normally return
+an operation handle and accept that handle for cancellation.
+
 ## Error translation
 
 Interop failures should be translated consistently:
@@ -316,7 +424,8 @@ Interop failures should be translated consistently:
 - Expected processing failures become an unsuccessful `ProcessingResult`.
 - Cancellation becomes `OperationCanceledException` or a clearly documented
   cancellation result.
-- Invalid arguments are rejected before entering native code.
+- `IProcessingService` rejects a missing input path; the native API validates
+  the ABI-level request again and adapters translate its return code.
 - ABI violations, invalid pointers, or impossible native states become managed
   exceptions.
 - Diagnostic details may also be published as `Warning` or `Error` engine
@@ -338,5 +447,18 @@ The current native path includes:
 - Adapter-owned deployment of `Engine.Native.dll`.
 - Focused x64 integration tests for both adapters.
 
+The client projects do not copy `Engine.Native.dll` themselves. Each native
+adapter declares the runtime DLL as its own output dependency, allowing that
+dependency to flow to whichever client selects the adapter.
+
+Current limitations are intentionally visible:
+
+- `Engine_Process` is synchronous and simulates work in 10% increments.
+- Cancellation state is global, so concurrent operations are unsupported.
+- `IProcessingService.StopAsync` is not implemented.
+- Event-bus scheduling is not yet consistent across both native adapters.
+- The gRPC adapter is a scaffold only.
+
 Future native algorithms can evolve behind this boundary without changing the
-public application or presentation contracts.
+public application or presentation contracts, provided the managed contract
+and native ABI are versioned deliberately when their shapes change.
