@@ -166,6 +166,7 @@ Detailed boundary documentation:
 
 - [Processing and native integration](processing-and-native-integration.md)
 - [AI-assisted processing](ai-assisted-processing.md)
+- [Observability and error handling](observability-and-error-handling.md)
 
 ## Design guidelines
 

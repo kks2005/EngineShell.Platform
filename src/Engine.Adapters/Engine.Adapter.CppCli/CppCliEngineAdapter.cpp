@@ -5,6 +5,10 @@
 
 namespace Engine::Adapter::CppCli
 {
+    constexpr int NativeSuccess = 0;
+    constexpr int NativeCancelled = -1;
+    constexpr int NativeInvalidRequest = 1;
+
     ref class ProcessingOperation;
 
     // Native callbacks receive only a void* context. gcroot keeps the managed
@@ -83,30 +87,39 @@ namespace Engine::Adapter::CppCli
                 // context is stack allocated safely because Engine_Process is
                 // synchronous and all callbacks finish before this method returns.
                 NativeCallbackContext context(this);
+
                 int result = Engine_Process(
                     &nativeRequest,
                     OnNativeProgress,
                     OnNativeCompletion,
                     &context);
 
-                if (result == -1)
+                if (result == NativeCancelled)
                 {
                     _cancellationToken.ThrowIfCancellationRequested();
                     throw gcnew System::OperationCanceledException();
                 }
 
-                if (result != 0 || !_completedSuccessfully)
+                if (result != NativeSuccess || !_completedSuccessfully)
                 {
-                    System::String^ message = System::String::Format(
-                        "Native processing failed with code {0}.",
-                        result);
+                    auto errorCode = result == NativeInvalidRequest
+                        ? Engine::Contracts::ProcessingErrorCode::InvalidRequest
+                        : Engine::Contracts::ProcessingErrorCode::NativeProcessingFailed;
+                    System::String^ message = result == NativeInvalidRequest
+                        ? "The processing request is invalid."
+                        : "The native engine could not process the file.";
+
                     Publish(
                         Engine::Contracts::EngineEventType::Error,
                         message);
-                    return gcnew Engine::Contracts::ProcessingResult(
+
+                    auto failedResult =
+                        gcnew Engine::Contracts::ProcessingResult(
                         false,
                         nullptr,
                         message);
+                    failedResult->ErrorCode = errorCode;
+                    return failedResult;
                 }
 
                 Publish(

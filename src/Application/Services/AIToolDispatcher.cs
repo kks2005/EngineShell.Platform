@@ -7,7 +7,8 @@ namespace EngineShell.Application.Services;
 /// <summary>
 /// The allowlisted boundary between AI-generated plans and application code.
 /// </summary>
-public sealed class AIToolDispatcher(IProcessingService processingService)
+public sealed class AIToolDispatcher(
+    IProcessingService processingService)
     : IAIToolDispatcher
 {
     public async Task<string> ExecuteAsync(
@@ -48,8 +49,12 @@ public sealed class AIToolDispatcher(IProcessingService processingService)
 
         if (!result.Success)
         {
-            throw new InvalidOperationException(
-                result.ErrorMessage ?? "Processing failed.");
+            var message =
+                result.ErrorMessage ?? "Processing failed.";
+
+            return string.IsNullOrWhiteSpace(result.OperationId)
+                ? message
+                : $"{message} Reference: {result.OperationId}";
         }
 
         return $"Processing completed: {result.OutputPath}";

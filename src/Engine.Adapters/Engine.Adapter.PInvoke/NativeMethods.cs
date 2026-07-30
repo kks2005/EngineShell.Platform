@@ -9,6 +9,10 @@ internal static class NativeMethods
 {
     private const string LibraryName = "Engine.Native.dll";
 
+    internal const int Success = 0;
+    internal const int Cancelled = -1;
+    internal const int InvalidRequest = 1;
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct EngineRequestDto
     {

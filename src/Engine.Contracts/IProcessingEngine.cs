@@ -1,7 +1,7 @@
 namespace Engine.Contracts;
 
 /// <summary>
-/// Interface for a processing engine that defines a contract for processing requests and returning results asynchronously.
+/// Defines the shared asynchronous contract implemented by processing engines.
 /// </summary>
 public interface IProcessingEngine
 {
@@ -21,16 +21,28 @@ public sealed class ProcessingResult
     {
     }
 
-    public ProcessingResult(bool success, string? outputPath, string? errorMessage = null)
+    public ProcessingResult(
+        bool success,
+        string? outputPath,
+        string? errorMessage = null)
     {
         Success = success;
         OutputPath = outputPath;
         ErrorMessage = errorMessage;
     }
 
-    public bool Success { get; set; }
-    public string? OutputPath { get; set; }
-    public string? ErrorMessage { get; set; }
+    public bool Success { get; private set; }
+    public string? OutputPath { get; private set; }
+    public string? ErrorMessage { get; private set; }
+    public ProcessingErrorCode ErrorCode { get; set; }
+    public string? OperationId { get; set; }
+}
+
+public enum ProcessingErrorCode
+{
+    None,
+    InvalidRequest,
+    NativeProcessingFailed
 }
 
 public record ProcessingProgress(

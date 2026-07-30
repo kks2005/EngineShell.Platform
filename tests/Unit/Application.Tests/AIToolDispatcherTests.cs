@@ -40,4 +40,35 @@ public sealed class AIToolDispatcherTests
             () => sut.ExecuteAsync(
                 new AIToolCall("delete_file", "input.dat")));
     }
+
+    [TestMethod]
+    public async Task ExecuteAsync_ExpectedProcessingFailure_ReturnsSafeOutcome()
+    {
+        var failedResult = new ProcessingResult(
+            false,
+            null,
+            "The native engine could not process the file.")
+        {
+            ErrorCode = ProcessingErrorCode.NativeProcessingFailed,
+            OperationId = "abc12345"
+        };
+        var processingService = new Mock<IProcessingService>();
+        processingService
+            .Setup(service => service.ProcessAsync(
+                new ProcessingRequest("input.dat", null),
+                It.IsAny<IProgress<ProcessingProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failedResult);
+        var sut = new AIToolDispatcher(processingService.Object);
+
+        var result = await sut.ExecuteAsync(
+            new AIToolCall(
+                AIToolNames.ProcessFile,
+                "input.dat"));
+
+        Assert.AreEqual(
+            "The native engine could not process the file. "
+                + "Reference: abc12345",
+            result);
+    }
 }

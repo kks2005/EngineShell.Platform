@@ -60,9 +60,12 @@ public sealed class HeadlessWorkflowTests
 
         // Assert
         Assert.AreEqual("invalid-scene.dat", engine.ReceivedRequest?.InputPath);
-        Assert.AreEqual(
-            "The scene could not be rendered.",
-            renderViewModel.Status);
+        StringAssert.StartsWith(
+            renderViewModel.Status,
+            "The scene could not be rendered. Reference: ");
+        Assert.IsTrue(
+            renderViewModel.Status.Length >
+            "The scene could not be rendered. Reference: ".Length);
     }
 
     [TestMethod]

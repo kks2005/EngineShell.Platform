@@ -48,6 +48,26 @@ public sealed class CppCliEngineAdapterTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_MapsInvalidNativeRequestToSafeFailure()
+    {
+        using var eventBus = new EngineEventBus();
+        var sut = new CppCliEngineAdapter(eventBus);
+
+        var result = await sut.ProcessAsync(
+            new ProcessingRequest(string.Empty),
+            null,
+            CancellationToken.None);
+
+        Assert.IsFalse(result.Success);
+        Assert.AreEqual(
+            ProcessingErrorCode.InvalidRequest,
+            result.ErrorCode);
+        Assert.AreEqual(
+            "The processing request is invalid.",
+            result.ErrorMessage);
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_CancelsNativeOperation()
     {
         using var eventBus = new EngineEventBus();

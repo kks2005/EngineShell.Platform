@@ -1,4 +1,5 @@
 using Engine.Contracts;
+using EngineShell.Application.Exceptions;
 using EngineShell.Application.Interfaces;
 using Moq;
 using Presentation.ViewModels;
@@ -51,7 +52,7 @@ public sealed class RenderEngineViewModelTests
     }
 
     [TestMethod]
-    public async Task ProcessCommand_WithoutInput_DoesNotCallService()
+    public async Task ProcessCommand_WithoutInput_ShowsValidationAndDoesNotCallService()
     {
         // Arrange
         var service = new Mock<IProcessingService>();
@@ -68,7 +69,9 @@ public sealed class RenderEngineViewModelTests
                 It.IsAny<IProgress<ProcessingProgress>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
-        Assert.AreEqual("Ready", sut.Status);
+        Assert.AreEqual(
+            "Select an input file before processing.",
+            sut.Status);
     }
 
     [TestMethod]
@@ -93,6 +96,66 @@ public sealed class RenderEngineViewModelTests
 
         // Assert
         Assert.AreEqual("Cancelled", sut.Status);
+    }
+
+    [TestMethod]
+    public async Task ProcessCommand_WithExpectedFailure_ShowsReference()
+    {
+        var service = new Mock<IProcessingService>();
+        service
+            .Setup(x => x.ProcessAsync(
+                It.IsAny<ProcessingRequest>(),
+                It.IsAny<IProgress<ProcessingProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessingResult(
+                false,
+                null,
+                "The file could not be processed.")
+            {
+                OperationId = "abc12345"
+            });
+        using var eventBus = new EngineEventBus();
+        using var sut = new RenderEngineViewModel(
+            service.Object,
+            eventBus)
+        {
+            InputPath = "input.dat"
+        };
+
+        await sut.ProcessCommand.ExecuteAsync(null);
+
+        Assert.AreEqual(
+            "The file could not be processed. Reference: abc12345",
+            sut.Status);
+    }
+
+    [TestMethod]
+    public async Task ProcessCommand_WithUnexpectedFailure_ShowsReference()
+    {
+        var service = new Mock<IProcessingService>();
+        service
+            .Setup(x => x.ProcessAsync(
+                It.IsAny<ProcessingRequest>(),
+                It.IsAny<IProgress<ProcessingProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ProcessingOperationException(
+                "def67890",
+                "An unexpected processing error occurred.",
+                new InvalidOperationException()));
+        using var eventBus = new EngineEventBus();
+        using var sut = new RenderEngineViewModel(
+            service.Object,
+            eventBus)
+        {
+            InputPath = "input.dat"
+        };
+
+        await sut.ProcessCommand.ExecuteAsync(null);
+
+        Assert.AreEqual(
+            "An unexpected processing error occurred. "
+            + "Reference: def67890",
+            sut.Status);
     }
 
     [TestMethod]

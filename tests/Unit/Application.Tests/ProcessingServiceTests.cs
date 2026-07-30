@@ -1,4 +1,5 @@
 using Engine.Contracts;
+using EngineShell.Application.Exceptions;
 using EngineShell.Application.Services;
 using Moq;
 
@@ -26,6 +27,7 @@ public sealed class ProcessingServiceTests
 
         // Assert
         Assert.AreSame(expectedResult, result);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(result.OperationId));
         engine.Verify(
             x => x.ProcessAsync(request, progress, cancellationSource.Token),
             Times.Once);
@@ -54,14 +56,15 @@ public sealed class ProcessingServiceTests
     }
 
     [TestMethod]
-    public void ProcessAsync_WithNullRequest_ThrowsArgumentNullException()
+    public async Task ProcessAsync_WithNullRequest_ThrowsArgumentNullException()
     {
         // Arrange
         var engine = new Mock<IProcessingEngine>();
         var sut = new ProcessingService(engine.Object);
 
         // Act
-        var exception = Assert.ThrowsException<ArgumentNullException>(
+        var exception =
+            await Assert.ThrowsExceptionAsync<ArgumentNullException>(
             () => sut.ProcessAsync(null!));
 
         // Assert
@@ -73,7 +76,8 @@ public sealed class ProcessingServiceTests
     [DataRow("")]
     [DataRow(" ")]
     [DataRow("\t")]
-    public void ProcessAsync_WithBlankInputPath_ThrowsArgumentException(string inputPath)
+    public async Task ProcessAsync_WithBlankInputPath_ThrowsArgumentException(
+        string inputPath)
     {
         // Arrange
         var engine = new Mock<IProcessingEngine>();
@@ -81,7 +85,8 @@ public sealed class ProcessingServiceTests
         var request = new ProcessingRequest(inputPath);
 
         // Act
-        var exception = Assert.ThrowsException<ArgumentException>(
+        var exception =
+            await Assert.ThrowsExceptionAsync<ArgumentException>(
             () => sut.ProcessAsync(request));
 
         // Assert
@@ -90,7 +95,7 @@ public sealed class ProcessingServiceTests
     }
 
     [TestMethod]
-    public async Task ProcessAsync_WhenEngineFails_PropagatesException()
+    public async Task ProcessAsync_WhenEngineFails_PreservesExceptionAndAddsOperationId()
     {
         // Arrange
         var request = new ProcessingRequest("input.dat");
@@ -102,11 +107,42 @@ public sealed class ProcessingServiceTests
         var sut = new ProcessingService(engine.Object);
 
         // Act
-        var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+        var exception =
+            await Assert.ThrowsExceptionAsync<ProcessingOperationException>(
             () => sut.ProcessAsync(request));
 
         // Assert
-        Assert.AreSame(expectedException, exception);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(exception.OperationId));
+        Assert.AreSame(expectedException, exception.InnerException);
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_WithExpectedFailure_AddsOperationId()
+    {
+        var request = new ProcessingRequest("input.dat");
+        var expectedResult = new ProcessingResult(
+            false,
+            null,
+            "The file could not be processed.")
+        {
+            ErrorCode = ProcessingErrorCode.NativeProcessingFailed
+        };
+        var engine = new Mock<IProcessingEngine>();
+        engine
+            .Setup(x => x.ProcessAsync(
+                request,
+                null,
+                CancellationToken.None))
+            .ReturnsAsync(expectedResult);
+        var sut = new ProcessingService(engine.Object);
+
+        var result = await sut.ProcessAsync(request);
+
+        Assert.IsFalse(result.Success);
+        Assert.AreEqual(
+            ProcessingErrorCode.NativeProcessingFailed,
+            result.ErrorCode);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(result.OperationId));
     }
 
     [TestMethod]

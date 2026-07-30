@@ -51,6 +51,49 @@ For the engine contract, native C ABI, callbacks, threading, cancellation, and
 deployment details, see
 [Processing and native integration](docs/processing-and-native-integration.md).
 
+For correlated WPF logging, error ownership, and user-facing failure behavior,
+see
+[Observability and error handling](docs/observability-and-error-handling.md).
+
+### Diagnostic design intent
+
+The processing workflow is designed around four operational qualities:
+
+- **Traceability** — one `OperationId` correlates the application request,
+  selected adapter, native boundary, terminal outcome, and user-visible
+  reference.
+- **Reproducibility** — logs capture relevant inputs, application and runtime
+  versions, operating system, process architecture, adapter selection, and
+  timing.
+- **Fixability** — anticipated failures use stable error codes, while
+  unexpected failures preserve the exception chain and managed/native boundary
+  context.
+- **Fail-fast behavior** — each layer validates the assumptions it owns and
+  prevents invalid state from silently propagating into deeper layers.
+
+These qualities are not tied to WPF or MVVM. They live primarily in the
+Application, Contracts, and adapter boundaries, so non-MVVM presentations and
+future clients inherit the same processing diagnostics. Each client
+composition root only selects the logging destination and implements its
+platform-specific fatal-error boundary.
+
+Responsibilities remain intentionally separated:
+
+| Layer | Diagnostic responsibility |
+| --- | --- |
+| **Presentation** | Provides immediate input feedback and translates outcomes into client-native UI state; it does not duplicate operation logging |
+| **Application** | Performs authoritative validation, creates the `OperationId`, opens the logging scope, measures the operation, and records its terminal outcome once |
+| **Contracts** | Defines portable requests, progress, stable error codes, safe messages, and correlated results without UI dependencies |
+| **Adapter** | Validates external-boundary assumptions, converts data, maps native status codes, and preserves interop exception context |
+| **Native engine** | Protects ABI and memory safety, returns stable status codes, reports callbacks, and prevents C++ exceptions from crossing the C boundary |
+| **Client composition root** | Selects the engine adapter, logger and destination, startup metadata, retention policy, and platform-specific unhandled-error behavior |
+
+Presentation validation exists for user experience; Application validation is
+authoritative for every caller. Expected failures remain typed results,
+cancellation remains distinct, and unexpected technical failures retain their
+original exception details. The user-visible `OperationId` connects a safe
+message to the developer’s technical record.
+
 ## AI-assisted processing (WPF POC)
 
 The WPF client includes a deliberately small vertical slice that lets a user
@@ -358,6 +401,7 @@ Notable dependencies include:
 - CommunityToolkit.Mvvm
 - Microsoft.Extensions.DependencyInjection
 - Microsoft.WindowsAppSDK
+- Serilog
 - System.Reactive
 - MSTest and Moq
 - FlaUI.Core and FlaUI.UIA3

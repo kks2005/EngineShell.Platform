@@ -11,6 +11,7 @@ public static class ServiceRegistration
     public static IServiceCollection AddApplication(
         this IServiceCollection services)
     {
+        services.AddLogging();
         services.AddSingleton<IEngineEventBus, EngineEventBus>();
         services.AddSingleton<IProcessingService, ProcessingService>();
         services.AddSingleton<IAIToolDispatcher, AIToolDispatcher>();

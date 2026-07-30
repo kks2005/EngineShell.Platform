@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Engine.Contracts;
+using EngineShell.Application.Exceptions;
 using EngineShell.Application.Interfaces;
 
 namespace Presentation.ViewModels;
@@ -54,7 +55,10 @@ public partial class RenderEngineViewModel : ViewModelBase
     private async Task ProcessAsync()
     {
         if (string.IsNullOrWhiteSpace(InputPath))
+        {
+            Status = "Select an input file before processing.";
             return;
+        }
 
         _cts = new CancellationTokenSource();
 
@@ -78,11 +82,19 @@ public partial class RenderEngineViewModel : ViewModelBase
 
             Status = result.Success
                 ? "Completed"
-                : result.ErrorMessage ?? "Failed";
+                : WithReference(
+                    result.ErrorMessage ?? "Processing failed.",
+                    result.OperationId);
         }
         catch (OperationCanceledException)
         {
             Status = "Cancelled";
+        }
+        catch (ProcessingOperationException exception)
+        {
+            Status = WithReference(
+                exception.Message,
+                exception.OperationId);
         }
         finally
         {
@@ -95,6 +107,13 @@ public partial class RenderEngineViewModel : ViewModelBase
     {
         _cts?.Cancel();
     }
+
+    private static string WithReference(
+        string message,
+        string? operationId) =>
+        string.IsNullOrWhiteSpace(operationId)
+            ? message
+            : $"{message} Reference: {operationId}";
 
     protected override void Dispose(bool disposing)
     {

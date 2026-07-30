@@ -1,4 +1,7 @@
 using Engine.Contracts;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Runtime.InteropServices;
 
 namespace Engine.Adapter.PInvoke;
 
@@ -8,10 +11,15 @@ namespace Engine.Adapter.PInvoke;
 public sealed class PInvokeEngineAdapter : IProcessingEngine
 {
     private readonly IEngineEventBus _eventBus;
+    private readonly ILogger<PInvokeEngineAdapter> _logger;
 
-    public PInvokeEngineAdapter(IEngineEventBus eventBus)
+    public PInvokeEngineAdapter(
+        IEngineEventBus eventBus,
+        ILogger<PInvokeEngineAdapter>? logger = null)
     {
+        ArgumentNullException.ThrowIfNull(eventBus);
         _eventBus = eventBus;
+        _logger = logger ?? NullLogger<PInvokeEngineAdapter>.Instance;
     }
 
     public async Task<ProcessingResult> ProcessAsync(
@@ -56,9 +64,20 @@ public sealed class PInvokeEngineAdapter : IProcessingEngine
 
             throw;
         }
+        catch (Exception exception) when (
+            exception is DllNotFoundException
+                or EntryPointNotFoundException
+                or BadImageFormatException
+                or MarshalDirectiveException
+                or SEHException)
+        {
+            throw new EngineInteropException(
+                "The Engine.Native processing call failed.",
+                exception);
+        }
     }
 
-    private static ProcessingResult ProcessNative(
+    private ProcessingResult ProcessNative(
         ProcessingRequest request,
         IProgress<ProcessingProgress>? progress,
         CancellationToken cancellationToken)
@@ -98,25 +117,48 @@ public sealed class PInvokeEngineAdapter : IProcessingEngine
         using var cancellationRegistration =
             cancellationToken.Register(NativeMethods.Engine_Cancel);
 
+        _logger.LogDebug(
+            "Calling Engine_Process. OutputPath={OutputPath}",
+            request.OutputPath);
+
         var status = NativeMethods.Engine_Process(
             ref nativeRequest,
             onProgress,
             onCompletion,
             nint.Zero);
 
+        _logger.LogDebug(
+            "Engine_Process returned NativeStatus={NativeStatus}.",
+            status);
+
         // Keep callback delegates alive until the synchronous native call ends.
         GC.KeepAlive(onProgress);
         GC.KeepAlive(onCompletion);
 
-        if (status == -1)
+        if (status == NativeMethods.Cancelled)
         {
             throw new OperationCanceledException(cancellationToken);
         }
 
-        if (status != 0 || completedResult is null)
+        if (status != NativeMethods.Success || completedResult is null)
         {
-            var message = $"Native processing failed with code {status}.";
-            return new ProcessingResult(false, null, message);
+            var errorCode = status == NativeMethods.InvalidRequest
+                ? ProcessingErrorCode.InvalidRequest
+                : ProcessingErrorCode.NativeProcessingFailed;
+            var message = status == NativeMethods.InvalidRequest
+                ? "The processing request is invalid."
+                : "The native engine could not process the file.";
+
+            return new ProcessingResult(false, null, message)
+            {
+                ErrorCode = errorCode
+            };
+        }
+
+        if (!completedResult.Success)
+        {
+            completedResult.ErrorCode =
+                ProcessingErrorCode.NativeProcessingFailed;
         }
 
         return completedResult;

@@ -6,6 +6,9 @@
                       ReferenceOutputAssembly="false"
                       Condition="'$(MSBuildRuntimeType)' == 'Full'" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
 
   <!-- Runtime dependency owned by this adapter and propagated to its clients. -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">

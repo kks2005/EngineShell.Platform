@@ -1,4 +1,5 @@
 using EngineShell.Application.AI;
+using EngineShell.Application.Exceptions;
 using EngineShell.Application.Interfaces;
 using Moq;
 using Presentation.ViewModels;
@@ -42,5 +43,32 @@ public sealed class ChatViewModelTests
         Assert.AreEqual("process input.dat", sut.Messages[^2].Text);
         Assert.AreEqual("Assistant", sut.Messages[^1].Speaker);
         Assert.AreEqual("Processing completed.", sut.Messages[^1].Text);
+    }
+
+    [TestMethod]
+    public async Task SendCommand_WithProcessingFailure_ShowsReference()
+    {
+        var chatService = new Mock<IChatService>();
+        chatService
+            .Setup(service => service.SendAsync(
+                "process input.dat",
+                It.IsAny<IProgress<ChatProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ProcessingOperationException(
+                "abc12345",
+                "An unexpected processing error occurred.",
+                new InvalidOperationException()));
+        var sut = new ChatViewModel(chatService.Object)
+        {
+            Input = "process input.dat"
+        };
+
+        await sut.SendCommand.ExecuteAsync(null);
+
+        Assert.AreEqual("System", sut.Messages[^1].Speaker);
+        Assert.AreEqual(
+            "An unexpected processing error occurred. "
+            + "Reference: abc12345",
+            sut.Messages[^1].Text);
     }
 }

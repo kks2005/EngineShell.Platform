@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EngineShell.Application.AI;
+using EngineShell.Application.Exceptions;
 using EngineShell.Application.Interfaces;
 using System.Collections.ObjectModel;
 
@@ -97,6 +98,12 @@ public partial class ChatViewModel : ViewModelBase
                 "System",
                 "Cannot reach Ollama. Make sure it is running and the "
                 + "configured model is available."));
+        }
+        catch (ProcessingOperationException exception)
+        {
+            Messages.Add(new ChatMessage(
+                "System",
+                $"{exception.Message} Reference: {exception.OperationId}"));
         }
         catch (Exception exception)
         {
