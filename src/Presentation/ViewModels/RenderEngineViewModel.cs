@@ -119,10 +119,18 @@ public partial class RenderEngineViewModel : ViewModelBase
     {
         if (disposing)
         {
-            _subscription.Dispose();
-            // Dispose of other managed resources if needed
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The operation completed while disposal was in progress.
+            }
 
+            _subscription.Dispose();
         }
+
         base.Dispose(disposing);
     }
 }

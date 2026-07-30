@@ -133,6 +133,23 @@ public partial class ChatViewModel : ViewModelBase
             Input = suggestion.Prompt;
         }
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            try
+            {
+                _cancellation?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The request completed while disposal was in progress.
+            }
+        }
+
+        base.Dispose(disposing);
+    }
 }
 
 public sealed record ChatMessage(

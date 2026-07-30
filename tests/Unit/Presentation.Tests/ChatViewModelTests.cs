@@ -71,4 +71,35 @@ public sealed class ChatViewModelTests
             + "Reference: abc12345",
             sut.Messages[^1].Text);
     }
+
+    [TestMethod]
+    public async Task Dispose_CancelsActiveChatRequest()
+    {
+        var started = new TaskCompletionSource<CancellationToken>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var chatService = new Mock<IChatService>();
+        chatService
+            .Setup(service => service.SendAsync(
+                "process input.dat",
+                It.IsAny<IProgress<ChatProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, IProgress<ChatProgress>?, CancellationToken>(
+                async (_, _, token) =>
+                {
+                    started.TrySetResult(token);
+                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                    return new ChatResult("unreachable");
+                });
+        var sut = new ChatViewModel(chatService.Object)
+        {
+            Input = "process input.dat"
+        };
+
+        var sending = sut.SendCommand.ExecuteAsync(null);
+        var token = await started.Task;
+        sut.Dispose();
+        await sending;
+
+        Assert.IsTrue(token.IsCancellationRequested);
+    }
 }

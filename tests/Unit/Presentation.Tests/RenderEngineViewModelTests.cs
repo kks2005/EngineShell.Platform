@@ -181,6 +181,38 @@ public sealed class RenderEngineViewModelTests
     }
 
     [TestMethod]
+    public async Task Dispose_CancelsActiveProcessing()
+    {
+        var started = new TaskCompletionSource<CancellationToken>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new Mock<IProcessingService>();
+        service
+            .Setup(x => x.ProcessAsync(
+                It.IsAny<ProcessingRequest>(),
+                It.IsAny<IProgress<ProcessingProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<ProcessingRequest, IProgress<ProcessingProgress>?, CancellationToken>(
+                async (_, _, token) =>
+                {
+                    started.TrySetResult(token);
+                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                    return new ProcessingResult(true, "output.dat");
+                });
+        using var eventBus = new EngineEventBus();
+        var sut = new RenderEngineViewModel(service.Object, eventBus)
+        {
+            InputPath = "input.dat"
+        };
+
+        var processing = sut.ProcessCommand.ExecuteAsync(null);
+        var token = await started.Task;
+        sut.Dispose();
+        await processing;
+
+        Assert.IsTrue(token.IsCancellationRequested);
+    }
+
+    [TestMethod]
     public void ProgressChange_UpdatesProgressTextAndRaisesPropertyChanged()
     {
         // Arrange

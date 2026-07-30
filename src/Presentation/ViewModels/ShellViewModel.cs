@@ -24,17 +24,27 @@ public partial class ShellViewModel : ViewModelBase
         Navigation = navigation;
         Status = status;
 
-        Header.NavigationChanged += key =>
-        {
-            Navigation.NavigateTo(key);
-            CurrentViewModel = Navigation.CurrentViewModel;
-
-            Status.Status = $"Loaded {key}";
-            Status.Progress = 0;
-        };
-
-
+        Header.NavigationChanged += OnNavigationChanged;
 
         CurrentViewModel = Navigation.CurrentViewModel;
+    }
+
+    private void OnNavigationChanged(string key)
+    {
+        Navigation.NavigateTo(key);
+        CurrentViewModel = Navigation.CurrentViewModel;
+
+        Status.Status = $"Loaded {key}";
+        Status.Progress = 0;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Header.NavigationChanged -= OnNavigationChanged;
+        }
+
+        base.Dispose(disposing);
     }
 }

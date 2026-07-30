@@ -55,4 +55,26 @@ public sealed class ShellViewModelTests
         status.VerifySet(x => x.Status = "Loaded Screens", Times.Once);
         status.VerifySet(x => x.Progress = 0, Times.Once);
     }
+
+    [TestMethod]
+    public void Dispose_UnsubscribesFromHeaderNavigation()
+    {
+        var initial = new object();
+        var item = new NavigationItem("Screens", "screens", new object());
+        var header = new HeaderViewModel([]);
+        var navigation = new Mock<INavigationService>();
+        navigation.SetupGet(x => x.CurrentViewModel).Returns(initial);
+        var sut = new ShellViewModel(
+            header,
+            new FooterViewModel(),
+            navigation.Object,
+            Mock.Of<IAppStatusService>());
+
+        sut.Dispose();
+        header.SelectedNavigationItem = item;
+
+        navigation.Verify(
+            service => service.NavigateTo(It.IsAny<string>()),
+            Times.Never);
+    }
 }
