@@ -22,6 +22,7 @@ $solutionPath = Join-Path $repositoryRoot "ClientAgnostic.sln"
 $nonUiProjects = [ordered]@{
     "application-unit" = "tests\Unit\Application.Tests\Application.Tests.csproj"
     "presentation-unit" = "tests\Unit\Presentation.Tests\Presentation.Tests.csproj"
+    "cli-client-unit" = "tests\Unit\CliClient.Tests\CliClient.Tests.csproj"
     "workflow" = "tests\Integration\Workflow.Tests\Integration.Tests.csproj"
     "headless" = "tests\Headless\Headless.Tests.csproj"
 }

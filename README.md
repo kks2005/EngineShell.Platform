@@ -144,17 +144,19 @@ src/
     ├── WpfClient/
     ├── WinUIClient/
     ├── MauiClient/
-    └── HeadlessClient/
+    └── CliClient/
 
 tests/
 ├── Unit/
 │   ├── Application.Tests/
-│   └── Presentation.Tests/
+│   ├── Presentation.Tests/
+│   └── CliClient.Tests/
 ├── Integration/
 │   ├── Workflow.Tests/
 │   ├── PInvoke.Adapter.Tests/
 │   └── CppCli.Adapter.Tests/
 ├── Headless/
+│   └── Headless.Tests/
 └── UI/
     ├── UiTest.Infrastructure/
     ├── Wpf.UiTests/
@@ -185,11 +187,14 @@ shared-view-model-to-MAUI-view host, theme integration, and its composition
 root. Windows UI automation follows the same logical page-object contract as
 WPF and WinUI.
 
-### Headless
+### CLI
 
-`HeadlessClient` is a presentation-free executable scaffold whose application
-workflow is not implemented yet. `Headless.Tests` separately verifies shared
-MVVM workflows without creating desktop controls. See
+`CliClient` is a presentation-free command-line host that processes requests
+through Application using the cross-platform simulator adapter. It reports
+progress and operation references, supports `Ctrl+C` cancellation, and returns
+stable exit codes. `CliClient.Tests` verifies command behavior, while
+`Headless.Tests` verifies full shared workflows without creating desktop
+controls. See
 [Headless boundaries](docs/architecture.md#headless-boundaries).
 
 ## Current status
@@ -205,7 +210,7 @@ MVVM workflows without creating desktop controls. See
 | WPF client | Shared shell, navigation, views, themes, processing, and experimental Ollama chat workflow implemented |
 | WinUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
 | MAUI client | Shared shell, navigation, views, themes, and processing workflow implemented |
-| Headless client | Presentation-free executable scaffold; application workflow is not implemented yet |
+| CLI client | Presentation-free processing workflow with progress, cancellation, operation references, and stable exit codes |
 | Tests | Unit, workflow, native-adapter, headless, and three desktop UI suites implemented |
 
 ## Prerequisites
@@ -229,7 +234,14 @@ Managed clients can be built independently with the .NET CLI:
 dotnet build src/Clients/WpfClient/WpfClient.csproj
 dotnet build src/Clients/WinUIClient/WinUIClient.csproj
 dotnet build src/Clients/MauiClient/MauiClient.csproj -f net9.0-windows10.0.19041.0
-dotnet build src/Clients/HeadlessClient/HeadlessClient.csproj
+dotnet build src/Clients/CliClient/CliClient.csproj
+```
+
+Run the presentation-free processing workflow:
+
+```powershell
+dotnet run --project src/Clients/CliClient/CliClient.csproj -- `
+    process sample.dat --output sample.out
 ```
 
 Because the complete solution contains native C++ and C++/CLI projects, build
@@ -245,7 +257,7 @@ The solution uses a layered test strategy:
 
 | Test layer | Purpose |
 | --- | --- |
-| **Unit** | Application and Presentation behavior in isolation |
+| **Unit** | Application, Presentation, and CLI behavior in isolation |
 | **Workflow** | Dependency registration and multi-component workflows |
 | **Adapter integration** | Real P/Invoke and C++/CLI calls into `Engine.Native` |
 | **Headless** | Shared MVVM workflows without graphical controls |
@@ -256,6 +268,7 @@ Run the managed, non-interactive suites:
 ```powershell
 dotnet test tests/Unit/Application.Tests/Application.Tests.csproj
 dotnet test tests/Unit/Presentation.Tests/Presentation.Tests.csproj
+dotnet test tests/Unit/CliClient.Tests/CliClient.Tests.csproj
 dotnet test tests/Integration/Workflow.Tests/Integration.Tests.csproj
 dotnet test tests/Headless/Headless.Tests.csproj
 ```
@@ -409,7 +422,6 @@ Notable dependencies include:
 ## Roadmap
 
 - Implement the gRPC adapter workflow
-- Implement the presentation-free HeadlessClient workflow
 - Extend native processing beyond the current demonstration operation
 - Add CI build and test pipelines
 - Add packaging and release automation

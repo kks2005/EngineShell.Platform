@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\Application\Application.csproj" />
+    <ProjectReference Include="..\..\Engine.Adapters\Engine.Adapter.Simulator\Engine.Adapter.Simulator.csproj" />
   </ItemGroup>
   <PropertyGroup>
     <OutputType>Exe</OutputType>

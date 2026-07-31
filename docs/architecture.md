@@ -142,16 +142,17 @@ an interaction or presentation layer appropriate to that technology:
 
 ## Headless boundaries
 
-`HeadlessClient` is currently a minimal executable scaffold. Its project
-references Application directly and does not reference the shared MVVM
-Presentation project. This establishes the intended dependency boundary for a
-future CLI, worker, service, or API host, but its executable workflow is not
-implemented yet.
+`CliClient` is a presentation-free command-line host. Its project references
+Application and the selected simulator adapter directly; it does not reference
+the shared MVVM Presentation project. It processes requests, reports progress
+and operation references, supports cancellation, and maps outcomes to stable
+exit codes. This demonstrates the intended dependency boundary for a CLI,
+worker, service, or API host.
 
-`Headless.Tests` serves a separate purpose. It composes shared view models and
-application services without creating WPF, WinUI, or MAUI controls. These tests
-prove that MVVM workflows can run without a graphical desktop; they do not
-replace a presentation-free headless executable.
+`CliClient.Tests` verifies command parsing, output, cancellation, and exit-code
+behavior in isolation. `Headless.Tests` separately composes complete shared
+workflows without creating WPF, WinUI, or MAUI controls. The two test styles
+distinguish a concrete non-MVVM client from headless integration execution.
 
 ## Integration boundaries
 
@@ -187,7 +188,6 @@ Detailed boundary documentation:
 
 ## Current architectural limitations
 
-- The presentation-free `HeadlessClient` workflow is not implemented.
 - The gRPC adapter is a scaffold.
 - Native cancellation supports one active operation because it uses global
   state.
