@@ -19,5 +19,13 @@ public sealed class ApplicationStartupTests : UiTestBase
         Assert.AreEqual(expectedAutomationId, App.MainWindow.AutomationId);
         Assert.IsTrue(App.MainWindow.IsAvailable);
         Assert.IsNotNull(shell.Header);
+
+        var forceFailure = string.Equals(
+            Environment.GetEnvironmentVariable("UI_TEST_FORCE_FAILURE"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        Assert.IsFalse(
+            forceFailure,
+            "Intentional failure used to verify UI screenshots and video.");
     }
 }

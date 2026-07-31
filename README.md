@@ -286,27 +286,78 @@ The Phase 1 CI pipeline is split by responsibility:
 `-- ui-ci.yml        # opt-in desktop UI workflow on a hosted Windows VM
 ```
 
-`ci.yml` restores and builds the complete `Debug|x64` solution once on every
-push and pull request and uploads the short-lived `ci-build` artifact. After a
-successful build, `managed-ci.yml` downloads those exact binaries, runs the
-managed unit, workflow, and headless test suites without rebuilding,
-smoke-tests the CLI, publishes an in-browser test report, and uploads the raw
-TRX test results.
+`ci.yml` owns repository-level triggers, permissions, concurrency, manual
+options, and job dependencies. The other files use `workflow_call` and contain
+one focused implementation each.
 
-Coverage and desktop UI automation are opt-in choices on a manual `CI` run.
-When selected, `coverage-ci.yml` and `ui-ci.yml` download the same `ci-build`
-artifact and run in parallel with the managed tests. Coverage calls the existing
-`coverage.ps1 -SkipBuild -SkipUi` workflow, publishes its text summary on the
-run page, and uploads the complete non-UI HTML and raw coverage artifacts.
+### Build once, verify in parallel
 
-This keeps repository-wide execution policy in one place while allowing each
-specialized workflow to remain independently readable and reusable.
+The pipeline compiles one shared build rather than rebuilding in every test
+job:
 
-Desktop UI automation is available as an opt-in manual CI job on GitHub's
-disposable `windows-latest` VM. Select **Run desktop UI tests** when starting
-`CI` from the GitHub Actions page. Keeping this job opt-in lets the repository
-verify FlaUI compatibility with the hosted desktop environment without adding
-UI automation time and variability to every push.
+```text
+Compile shared binaries
+    -> restore and build the complete Debug|x64 solution
+    -> validate required managed, desktop, and native outputs
+    -> upload the short-lived ci-build artifact
+        |
+        +-> Verify managed workflows
+        |     -> unit, workflow, and headless tests
+        |     -> CLI smoke test
+        |
+        +-> Measure managed and native coverage  [manual option]
+        |     -> instrument the shared binaries
+        |     -> managed, P/Invoke, C++/CLI, and native coverage
+        |
+        `-> Validate desktop clients             [manual option]
+              -> WPF, WinUI, and MAUI tests with FlaUI
+```
+
+Each verification job declares `needs: build`. GitHub therefore starts it only
+after the build and artifact upload succeed. The verification jobs do not
+depend on one another, so every selected job can run in parallel on its own
+fresh `windows-latest` VM.
+
+The `ci-build` artifact preserves the project-relative `bin` and `obj` trees.
+Downstream jobs check out the same commit, restore any runner-local tooling or
+test packages they need, download the artifact into the repository root, and
+run with `--no-build`. This ensures that every verification path uses the same
+compiled binaries while still allowing each job to have an isolated runtime
+environment.
+
+### Triggers and optional verification
+
+| Trigger | Build | Managed tests | Coverage | Desktop UI tests |
+|---|---:|---:|---:|---:|
+| Push | Yes | Yes | No | No |
+| Pull request | Yes | Yes | No | No |
+| Manual, no options | Yes | Yes | No | No |
+| Manual, coverage selected | Yes | Yes | Yes | No |
+| Manual, UI selected | Yes | Yes | No | Yes |
+| Manual, both selected | Yes | Yes | Yes | Yes |
+
+To request optional verification, open **Actions → CI → Run workflow**, choose
+the branch, and select **Run managed and native code coverage**, **Run desktop
+UI tests**, or both. GitHub preserves a run's original inputs, so optional jobs
+cannot be added later by rerunning a workflow that skipped them.
+
+Desktop UI automation remains opt-in because it takes longer and depends on
+the interactive behavior available in GitHub's disposable Windows environment.
+The three FlaUI suites run sequentially within one UI job so that they do not
+compete for the same desktop.
+
+### Reports and artifacts
+
+| Artifact/report | Contents | Retention |
+|---|---|---:|
+| `ci-build` | Shared Debug x64 `bin` and `obj` output used between jobs | 1 day |
+| `managed-test-results` | Managed TRX files; also rendered in the run summary | 14 days |
+| `non-ui-coverage-report` | Raw coverage, Cobertura, text summary, and HTML report | 14 days |
+| `desktop-ui-test-results` | UI TRX files, failure screenshots, and failed-test video | 14 days |
+
+This keeps execution policy and dependencies visible in `ci.yml` while leaving
+build, managed testing, coverage, and desktop automation independently readable
+and reusable.
 
 Build the x64 solution before running the native adapter suites:
 
@@ -324,6 +375,16 @@ dotnet test tests/UI/Wpf.UiTests/Wpf.UiTests.csproj
 dotnet test tests/UI/WinUI.UiTests/WinUI.UiTests.csproj
 dotnet test tests/UI/Maui.UiTests/Maui.UiTests.csproj
 ```
+
+`ui-tests.runsettings` keeps desktop execution serial, fails when no tests are
+discovered, captures MSTest output, and configures Visual Studio's video data
+collector to retain recordings only for failed tests. The GitHub UI workflow
+passes this file explicitly to each FlaUI test project.
+
+To verify failure diagnostics, start a manual CI run with **Run desktop UI
+tests** and **Intentionally fail one WPF test to verify failure artifacts**
+selected. The WPF startup test fails only when that diagnostic option is set;
+normal local and CI runs remain unaffected.
 
 `UiTest.Infrastructure` provides:
 

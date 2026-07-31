@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Desktop automation shares one Windows session. -->
+    <MaxCpuCount>1</MaxCpuCount>
+    <TestSessionTimeout>1800000</TestSessionTimeout>
+    <TreatNoTestsAsError>true</TreatNoTestsAsError>
+  </RunConfiguration>
+
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Record the desktop during each test, but retain video only on failure. -->
+      <DataCollector
+        uri="datacollector://microsoft/VideoRecorder/1.0"
+        assemblyQualifiedName="Microsoft.VisualStudio.TestTools.DataCollection.VideoRecorder.VideoRecorderDataCollector, Microsoft.VisualStudio.TestTools.DataCollection.VideoRecorder, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
+        friendlyName="Screen and Voice Recorder"
+        enabled="True">
+        <Configuration>
+          <MediaRecorder
+            sendRecordedMediaForPassedTestCase="false"
+            xmlns="">
+            <ScreenCaptureVideo
+              bitRate="512"
+              frameRate="2"
+              quality="20" />
+          </MediaRecorder>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <MSTest>
+    <CaptureTraceOutput>true</CaptureTraceOutput>
+    <MapInconclusiveToFailed>true</MapInconclusiveToFailed>
+  </MSTest>
+</RunSettings>

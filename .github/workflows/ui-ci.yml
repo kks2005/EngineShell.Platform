@@ -41,6 +41,7 @@ jobs:
             dotnet test $entry.Value `
               --configuration Debug `
               --no-build `
+              --settings ui-tests.runsettings `
               --logger "trx;LogFileName=$($entry.Key).trx" `
               --results-directory "artifacts/ui-test-results/$($entry.Key)"
 
