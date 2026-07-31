@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_ui:
+        description: Run desktop UI tests on a GitHub-hosted Windows VM
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  managed:
+    name: Managed build and tests
+    uses: ./.github/workflows/managed-ci.yml
+
+  coverage:
+    name: Managed and native coverage
+    uses: ./.github/workflows/coverage-ci.yml
+
+  ui:
+    name: Desktop UI tests
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui }}
+    uses: ./.github/workflows/ui-ci.yml

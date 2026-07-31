@@ -1,0 +1,66 @@
+name: Coverage CI
+
+on:
+  workflow_call:
+
+jobs:
+  coverage:
+    name: Managed and native coverage
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install .NET 9 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Run non-UI coverage
+        shell: powershell
+        run: |
+          .\scripts\coverage.ps1 -SkipUi
+
+      - name: Publish coverage summary
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $run = Get-ChildItem ".coverage/runs" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+          $summary = if ($run) {
+            Join-Path $run.FullName "non-ui-report/Summary.txt"
+          }
+
+          if ($summary -and (Test-Path -LiteralPath $summary)) {
+            @(
+              "## Managed and native code coverage"
+              ""
+              '```text'
+              (Get-Content -LiteralPath $summary)
+              '```'
+              ""
+              "Download **non-ui-coverage-report** below to browse the full HTML report."
+            ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          }
+          else {
+            "## Code coverage`n`nNo coverage summary was produced." |
+              Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: non-ui-coverage-report
+          path: .coverage/runs/**
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 14
