@@ -286,7 +286,8 @@ The Phase 1 CI pipeline is split by responsibility:
 `ci.yml` runs on every push and pull request and can also be started manually
 from the GitHub Actions page. It calls `managed-ci.yml`, which restores and
 builds the UI-independent .NET projects, runs the managed unit, workflow, and
-headless test suites, smoke-tests the CLI, and uploads TRX test results.
+headless test suites, smoke-tests the CLI, publishes an in-browser test report,
+and uploads the raw TRX test results.
 
 This keeps repository-wide execution policy in one place while allowing future
 native, coverage, and UI automation workflows to be composed as additional

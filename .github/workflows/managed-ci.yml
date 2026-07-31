@@ -92,6 +92,16 @@ jobs:
             --no-build `
             -- process ci-input.dat --output ci-output.dat
 
+      - name: Publish test report
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Managed test results
+          path: artifacts/test-results/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+          fail-on-empty: false
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
