@@ -46,6 +46,27 @@ function Assert-LastCommandSucceeded {
     }
 }
 
+function Restore-TestProjectPackages {
+    param(
+        [Parameter(Mandatory)]
+        [System.Collections.IDictionary]$Projects,
+        [string]$Platform
+    )
+
+    foreach ($project in $Projects.GetEnumerator()) {
+        $projectPath = Join-Path $repositoryRoot $project.Value
+        $restoreArguments = @("restore", $projectPath)
+        if ($Platform) {
+            $restoreArguments += "-p:Platform=$Platform"
+        }
+
+        Write-Host "Restoring $($project.Key) test dependencies..."
+        dotnet @restoreArguments
+        Assert-LastCommandSucceeded `
+            "Restoring test dependencies failed for '$($project.Key)'."
+    }
+}
+
 function Get-VisualStudioMSBuild {
     $msbuild = Get-Command msbuild.exe -ErrorAction SilentlyContinue
     if ($null -ne $msbuild) {
@@ -227,6 +248,16 @@ Write-Host "Coverage run directory: $runRoot"
 
 dotnet tool restore
 Assert-LastCommandSucceeded "Restoring local .NET tools failed."
+
+if ($SkipBuild) {
+    # Build artifacts contain bin/obj output, but each fresh CI runner still
+    # needs its own NuGet package cache for test hosts and data collectors.
+    Restore-TestProjectPackages $nonUiProjects
+    Restore-TestProjectPackages $nativeProjects -Platform "x64"
+    if (-not $SkipUi) {
+        Restore-TestProjectPackages $uiProjects
+    }
+}
 
 if (-not $SkipBuild) {
     $msbuildPath = Get-VisualStudioMSBuild
