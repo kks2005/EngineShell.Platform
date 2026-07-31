@@ -39,6 +39,7 @@ jobs:
           & $msbuild ClientAgnostic.sln `
             /restore `
             /t:Build `
+            /m `
             /p:Configuration=Debug `
             /p:Platform=x64 `
             /nologo
