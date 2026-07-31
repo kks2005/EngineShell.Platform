@@ -5,6 +5,11 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      run_coverage:
+        description: Run managed and native code coverage
+        required: false
+        default: false
+        type: boolean
       run_ui:
         description: Run desktop UI tests on a GitHub-hosted Windows VM
         required: false
@@ -27,6 +32,7 @@ jobs:
 
   coverage:
     name: Managed and native coverage
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_coverage }}
     uses: ./.github/workflows/coverage-ci.yml
 
   ui:

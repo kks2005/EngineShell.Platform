@@ -285,13 +285,16 @@ The Phase 1 CI pipeline is split by responsibility:
 `-- ui-ci.yml        # opt-in desktop UI workflow on a hosted Windows VM
 ```
 
-`ci.yml` runs on every push and pull request and can also be started manually
-from the GitHub Actions page. It calls `managed-ci.yml`, which restores and
-builds the UI-independent .NET projects, runs the managed unit, workflow, and
-headless test suites, smoke-tests the CLI, publishes an in-browser test report,
-and uploads the raw TRX test results. In parallel, `coverage-ci.yml` runs the
-existing `coverage.ps1 -SkipUi` workflow, publishes its text summary on the run
-page, and uploads the complete non-UI HTML and raw coverage artifacts.
+`ci.yml` runs the fast managed workflow on every push and pull request and can
+also be started manually from the GitHub Actions page. `managed-ci.yml`
+restores and builds the UI-independent .NET projects, runs the managed unit,
+workflow, and headless test suites, smoke-tests the CLI, publishes an
+in-browser test report, and uploads the raw TRX test results.
+
+Coverage and desktop UI automation are opt-in choices on a manual `CI` run.
+When selected, `coverage-ci.yml` runs the existing `coverage.ps1 -SkipUi`
+workflow, publishes its text summary on the run page, and uploads the complete
+non-UI HTML and raw coverage artifacts.
 
 This keeps repository-wide execution policy in one place while allowing each
 specialized workflow to remain independently readable and reusable.

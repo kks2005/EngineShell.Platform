@@ -60,7 +60,6 @@ jobs:
             dotnet test $entry.Value `
               --configuration Debug `
               --no-build `
-              -p:Platform=x64 `
               --logger "trx;LogFileName=$($entry.Key).trx" `
               --results-directory "artifacts/ui-test-results/$($entry.Key)"
 
