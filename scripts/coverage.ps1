@@ -77,6 +77,7 @@ function Invoke-VisualStudioBuild {
     $startInfo.UseShellExecute = $false
     $startInfo.Arguments = @(
         "`"$solutionPath`""
+        "/restore"
         "/t:Build"
         "/p:Configuration=Debug"
         "/p:Platform=x64"
