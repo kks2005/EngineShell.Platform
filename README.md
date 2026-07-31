@@ -273,6 +273,28 @@ dotnet test tests/Integration/Workflow.Tests/Integration.Tests.csproj
 dotnet test tests/Headless/Headless.Tests.csproj
 ```
 
+## Continuous integration
+
+The Phase 1 CI pipeline is split by responsibility:
+
+```text
+.github/workflows/
+|-- ci.yml          # top-level triggers and pipeline composition
+`-- managed-ci.yml  # reusable managed build and test workflow
+```
+
+`ci.yml` runs on every push and pull request and can also be started manually
+from the GitHub Actions page. It calls `managed-ci.yml`, which restores and
+builds the UI-independent .NET projects, runs the managed unit, workflow, and
+headless test suites, smoke-tests the CLI, and uploads TRX test results.
+
+This keeps repository-wide execution policy in one place while allowing future
+native, coverage, and UI automation workflows to be composed as additional
+top-level jobs.
+
+Native x64 builds, adapter integration, coverage publication, and desktop UI
+automation remain separate future workflow phases.
+
 Build the x64 solution before running the native adapter suites:
 
 ```powershell

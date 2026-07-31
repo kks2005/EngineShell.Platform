@@ -1,0 +1,102 @@
+name: Managed CI
+
+on:
+  workflow_call:
+
+jobs:
+  build-and-test:
+    name: Build and test managed workflows
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install .NET 9 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore managed test projects
+        shell: pwsh
+        run: |
+          $projects = @(
+            "tests/Unit/Application.Tests/Application.Tests.csproj"
+            "tests/Unit/Presentation.Tests/Presentation.Tests.csproj"
+            "tests/Unit/CliClient.Tests/CliClient.Tests.csproj"
+            "tests/Integration/Workflow.Tests/Integration.Tests.csproj"
+            "tests/Headless/Headless.Tests.csproj"
+          )
+
+          foreach ($project in $projects) {
+            dotnet restore $project
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+      - name: Build managed architecture
+        shell: pwsh
+        run: |
+          $projects = @(
+            "src/Application/Application.csproj"
+            "src/Presentation/Presentation.csproj"
+            "src/Engine.Adapters/Engine.Adapter.Simulator/Engine.Adapter.Simulator.csproj"
+            "src/Clients/CliClient/CliClient.csproj"
+          )
+
+          foreach ($project in $projects) {
+            dotnet build $project `
+              --configuration Release `
+              --no-restore
+
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+      - name: Run managed tests
+        shell: pwsh
+        run: |
+          $projects = [ordered]@{
+            "application-unit" = "tests/Unit/Application.Tests/Application.Tests.csproj"
+            "presentation-unit" = "tests/Unit/Presentation.Tests/Presentation.Tests.csproj"
+            "cli-client-unit" = "tests/Unit/CliClient.Tests/CliClient.Tests.csproj"
+            "workflow" = "tests/Integration/Workflow.Tests/Integration.Tests.csproj"
+            "headless" = "tests/Headless/Headless.Tests.csproj"
+          }
+
+          foreach ($entry in $projects.GetEnumerator()) {
+            dotnet test $entry.Value `
+              --configuration Release `
+              --no-restore `
+              --logger "trx;LogFileName=$($entry.Key).trx" `
+              --results-directory "artifacts/test-results/$($entry.Key)"
+
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+      - name: Smoke test CLI workflow
+        shell: pwsh
+        run: |
+          dotnet run `
+            --project src/Clients/CliClient/CliClient.csproj `
+            --configuration Release `
+            --no-build `
+            -- process ci-input.dat --output ci-output.dat
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: managed-test-results
+          path: artifacts/test-results/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
