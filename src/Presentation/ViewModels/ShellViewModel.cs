@@ -29,9 +29,17 @@ public partial class ShellViewModel : ViewModelBase
         CurrentViewModel = Navigation.CurrentViewModel;
     }
 
-    private void OnNavigationChanged(string key)
+    private async void OnNavigationChanged(string key)
     {
-        Navigation.NavigateTo(key);
+        var previousViewModel = CurrentViewModel;
+        var navigated = await Navigation.NavigateToAsync(key);
+
+        if (!navigated)
+        {
+            Header.RestoreSelection(previousViewModel);
+            return;
+        }
+
         CurrentViewModel = Navigation.CurrentViewModel;
 
         Status.Status = $"Loaded {key}";

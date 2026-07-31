@@ -74,23 +74,26 @@ function Invoke-VisualStudioBuild {
     $startInfo.FileName = $MSBuildPath
     $startInfo.WorkingDirectory = $repositoryRoot
     $startInfo.UseShellExecute = $false
-    $startInfo.ArgumentList.Add($solutionPath)
-    $startInfo.ArgumentList.Add("/t:Build")
-    $startInfo.ArgumentList.Add("/p:Configuration=Debug")
-    $startInfo.ArgumentList.Add("/p:Platform=x64")
-    $startInfo.ArgumentList.Add("/nologo")
+    $startInfo.Arguments = @(
+        "`"$solutionPath`""
+        "/t:Build"
+        "/p:Configuration=Debug"
+        "/p:Platform=x64"
+        "/nologo"
+    ) -join " "
 
     # Some hosts expose the same Windows environment key with different casing.
     # VC++ rejects that dictionary, so pass MSBuild a case-insensitive,
     # de-duplicated copy.
     $environment = [System.Environment]::GetEnvironmentVariables()
-    $startInfo.Environment.Clear()
+    $startInfo.EnvironmentVariables.Clear()
     $seenKeys = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase)
     foreach ($key in $environment.Keys) {
         $name = [string]$key
         if ($seenKeys.Add($name)) {
-            $startInfo.Environment[$name] = [string]$environment[$key]
+            $startInfo.EnvironmentVariables[$name] =
+                [string]$environment[$key]
         }
     }
 
@@ -157,6 +160,27 @@ function Assert-CoverageFile {
     Write-Host "Validated $Layer coverage: $covered/$valid lines ($percent%)."
 }
 
+function Get-RepositoryRelativePath {
+    param([Parameter(Mandatory)][string]$Path)
+
+    # Windows PowerShell 5.1 runs on .NET Framework, where
+    # System.IO.Path.GetRelativePath is not available.
+    $root = [System.IO.Path]::GetFullPath($repositoryRoot).
+        TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar)
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $rootPrefix = $root + [System.IO.Path]::DirectorySeparatorChar
+
+    if (-not $fullPath.StartsWith(
+        $rootPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the repository: $fullPath"
+    }
+
+    return $fullPath.Substring($rootPrefix.Length)
+}
+
 function Assert-AllTestProjectsConfigured {
     $configured = @($nonUiProjects.Values) +
         @($nativeProjects.Values) +
@@ -172,9 +196,8 @@ function Assert-AllTestProjectsConfigured {
             @($project.Project.PropertyGroup.IsTestProject) -contains "true"
         } |
         ForEach-Object {
-            [System.IO.Path]::GetRelativePath(
-                $repositoryRoot,
-                $_.FullName).Replace("/", "\").ToLowerInvariant()
+            $relativePath = Get-RepositoryRelativePath $_.FullName
+            $relativePath.Replace("/", "\").ToLowerInvariant()
         }
 
     $missing = @($discovered | Where-Object { $_ -notin $configured })

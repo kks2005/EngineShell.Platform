@@ -9,7 +9,7 @@ namespace Presentation.ViewModels;
 /// <summary>
 /// Represents the ViewModel for the Render Engine functionality, handling user interactions and data binding for the associated view.
 /// </summary>
-public partial class RenderEngineViewModel : ViewModelBase
+public partial class RenderEngineViewModel : ViewModelBase, INavigationAware
 {
     private readonly IProcessingService _processingService;
     private readonly IEngineEventBus eventBus;
@@ -107,6 +107,26 @@ public partial class RenderEngineViewModel : ViewModelBase
     {
         _cts?.Cancel();
     }
+
+    public string? GetNavigationWarning() =>
+        ProcessCommand.IsRunning
+            ? "Processing is still running. Cancel it and leave this page?"
+            : null;
+
+    public async Task OnNavigatedFromAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Cancel();
+
+        if (ProcessCommand.ExecutionTask is { } processing)
+        {
+            await processing.WaitAsync(cancellationToken);
+        }
+    }
+
+    public Task OnNavigatedToAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 
     private static string WithReference(
         string message,

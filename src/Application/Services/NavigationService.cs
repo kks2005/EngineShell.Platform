@@ -1,24 +1,63 @@
-﻿using EngineShell.Application.Interfaces;
+using EngineShell.Application.Interfaces;
 using EngineShell.Application.Models;
 
-namespace EngineShell.Application.Services
+namespace EngineShell.Application.Services;
+
+public class NavigationService : INavigationService
 {
-    public class NavigationService : INavigationService
+    private readonly Dictionary<string, object> _pages;
+    private readonly IDialogService? _dialogService;
+
+    public object CurrentViewModel { get; private set; }
+
+    public NavigationService(
+        IEnumerable<NavigationItem> items,
+        IDialogService? dialogService = null)
     {
-        private readonly Dictionary<string, object> _pages;
+        _pages = items.ToDictionary(x => x.Title, x => x.ViewModel);
+        CurrentViewModel = _pages.Values.First();
+        _dialogService = dialogService;
+    }
 
-        public object CurrentViewModel { get; private set; }
-
-        public NavigationService(IEnumerable<NavigationItem> items)
+    public async Task<bool> NavigateToAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_pages.TryGetValue(key, out var destination))
         {
-            _pages = items.ToDictionary(x => x.Title, x => x.ViewModel);
-            CurrentViewModel = _pages.Values.First();
+            return false;
         }
 
-        public void NavigateTo(string key)
+        if (ReferenceEquals(destination, CurrentViewModel))
         {
-            if (_pages.TryGetValue(key, out var vm))
-                CurrentViewModel = vm;
+            return true;
         }
+
+        if (CurrentViewModel is INavigationAware current)
+        {
+            var warning = current.GetNavigationWarning();
+
+            if (warning is not null)
+            {
+                var confirmed = _dialogService is not null
+                    && await _dialogService.ShowConfirmationAsync(warning);
+
+                if (!confirmed)
+                {
+                    return false;
+                }
+            }
+
+            await current.OnNavigatedFromAsync(cancellationToken);
+        }
+
+        CurrentViewModel = destination;
+
+        if (destination is INavigationAware next)
+        {
+            await next.OnNavigatedToAsync(cancellationToken);
+        }
+
+        return true;
     }
 }

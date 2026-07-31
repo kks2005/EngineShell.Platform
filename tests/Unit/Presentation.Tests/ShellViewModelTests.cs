@@ -40,6 +40,11 @@ public sealed class ShellViewModelTests
         navigation.SetupSequence(x => x.CurrentViewModel)
             .Returns(initial)
             .Returns(destination);
+        navigation.Setup(
+                x => x.NavigateToAsync(
+                    "Screens",
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         var sut = new ShellViewModel(
             header,
             new FooterViewModel(),
@@ -50,7 +55,11 @@ public sealed class ShellViewModelTests
         header.SelectedNavigationItem = item;
 
         // Assert
-        navigation.Verify(x => x.NavigateTo("Screens"), Times.Once);
+        navigation.Verify(
+            x => x.NavigateToAsync(
+                "Screens",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
         Assert.AreSame(destination, sut.CurrentViewModel);
         status.VerifySet(x => x.Status = "Loaded Screens", Times.Once);
         status.VerifySet(x => x.Progress = 0, Times.Once);
@@ -64,6 +73,11 @@ public sealed class ShellViewModelTests
         var header = new HeaderViewModel([]);
         var navigation = new Mock<INavigationService>();
         navigation.SetupGet(x => x.CurrentViewModel).Returns(initial);
+        navigation.Setup(
+                x => x.NavigateToAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         var sut = new ShellViewModel(
             header,
             new FooterViewModel(),
@@ -74,7 +88,43 @@ public sealed class ShellViewModelTests
         header.SelectedNavigationItem = item;
 
         navigation.Verify(
-            service => service.NavigateTo(It.IsAny<string>()),
+            service => service.NavigateToAsync(
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [TestMethod]
+    public void DeclinedNavigation_RestoresPreviousHeaderSelection()
+    {
+        var generalViewModel = new object();
+        var screensViewModel = new object();
+        var general = new NavigationItem(
+            "General",
+            "general",
+            generalViewModel);
+        var screens = new NavigationItem(
+            "Screens",
+            "screens",
+            screensViewModel);
+        var header = new HeaderViewModel([general, screens]);
+        var navigation = new Mock<INavigationService>();
+        navigation.SetupGet(x => x.CurrentViewModel)
+            .Returns(generalViewModel);
+        navigation.Setup(
+                x => x.NavigateToAsync(
+                    "Screens",
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        var sut = new ShellViewModel(
+            header,
+            new FooterViewModel(),
+            navigation.Object,
+            Mock.Of<IAppStatusService>());
+
+        header.SelectedNavigationItem = screens;
+
+        Assert.AreSame(general, header.SelectedNavigationItem);
+        Assert.AreSame(generalViewModel, sut.CurrentViewModel);
     }
 }

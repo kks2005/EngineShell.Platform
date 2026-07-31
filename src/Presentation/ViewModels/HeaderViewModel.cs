@@ -6,6 +6,8 @@ namespace Presentation.ViewModels;
 
 public partial class HeaderViewModel : ViewModelBase
 {
+    private bool _suppressNavigation;
+
     public ObservableCollection<NavigationItem> NavigationItems { get; }
 
     [ObservableProperty]
@@ -21,10 +23,25 @@ public partial class HeaderViewModel : ViewModelBase
 
     partial void OnSelectedNavigationItemChanged(NavigationItem? value)
     {
-        if (value is not null)
+        if (!_suppressNavigation && value is not null)
         {
             NavigationChanged?.Invoke(value.Title);
         }
+    }
+
+    public void RestoreSelection(object viewModel)
+    {
+        var item = NavigationItems.FirstOrDefault(
+            candidate => ReferenceEquals(candidate.ViewModel, viewModel));
+
+        if (item is null)
+        {
+            return;
+        }
+
+        _suppressNavigation = true;
+        SelectedNavigationItem = item;
+        _suppressNavigation = false;
     }
 }
 

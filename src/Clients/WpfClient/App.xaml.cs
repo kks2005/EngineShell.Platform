@@ -14,6 +14,7 @@ using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Presentation;
+using WpfClient.Services;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -37,6 +38,7 @@ public partial class App : Application
         var logPath = ConfigureLogging(services);
 
         services.AddApplication();
+        services.AddSingleton<IDialogService, WpfDialogService>();
         services.AddPresentation(includeAIChat: true);
         services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
         services.AddSingleton(sp =>
