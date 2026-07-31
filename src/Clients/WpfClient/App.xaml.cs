@@ -14,6 +14,7 @@ using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Presentation;
+using Presentation.Dialogs;
 using WpfClient.Services;
 using System.Windows;
 using System.Windows.Threading;

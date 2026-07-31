@@ -20,7 +20,7 @@ composition roots.
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ Application                                                  │◄──── Headless / future
-│ ProcessingService | ChatService | tool dispatch | navigation │      non-MVVM hosts
+│ ProcessingService | ChatService | validation | tool dispatch │      non-MVVM hosts
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -41,10 +41,10 @@ Each area has a distinct responsibility:
 
 - **Engine.Contracts** defines the processing boundary without UI or native
   implementation details.
-- **Application** coordinates navigation, status, processing, and AI-assisted
-  workflows.
-- **Presentation** provides shared MVVM view models for data-binding client
-  frameworks using CommunityToolkit.Mvvm.
+- **Application** coordinates status, processing, validation, and AI-assisted
+  workflows without knowing about view models or dialogs.
+- **Presentation** provides shared MVVM view models, navigation lifecycle, and
+  dialog abstractions for data-binding clients using CommunityToolkit.Mvvm.
 - **Engine.Adapters** maps managed contracts to a concrete engine technology.
 - **AI.Adapters** maps an AI provider response into an application-owned plan.
 - **Engine.Native** exposes a small C-compatible processing API.
@@ -113,14 +113,16 @@ data-binding clients:
 ```text
 Presentation
     ├── ViewModels
+    ├── Navigation
+    ├── Dialogs
     ├── observable state
-    ├── commands
-    └── navigation models
+    └── commands
 ```
 
 WPF, WinUI 3, and .NET MAUI provide thin platform views over these shared
-models. Presentation is UI-framework agnostic within this MVVM family, but it
-is not intended to serve every possible client technology.
+models and implement the platform-specific dialog rendering. Presentation is
+UI-framework agnostic within this MVVM family, but it is not intended to serve
+every possible client technology.
 
 A web application, API, command-line tool, background worker, or service can
 reuse Application, Engine.Contracts, and the selected adapters while supplying

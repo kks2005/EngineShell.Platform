@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using EngineShell.Application.Interfaces;
+using Presentation.Navigation;
 
 namespace Presentation.ViewModels;
 

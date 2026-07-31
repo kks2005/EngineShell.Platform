@@ -1,4 +1,4 @@
-using EngineShell.Application.Models;
+using Presentation.Navigation;
 using Presentation.ViewModels;
 
 namespace Presentation.Tests;

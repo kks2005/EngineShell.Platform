@@ -10,7 +10,7 @@
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <Label
             AutomationId="Footer.StatusText"
-            Text="{Binding Status, TargetNullValue=Ready}"
+            Text="{Binding Status, Mode=OneWay, TargetNullValue=Ready}"
             VerticalOptions="Center" />
         <Picker
             x:Name="ThemePicker"

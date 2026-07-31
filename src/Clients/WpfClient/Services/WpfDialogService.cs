@@ -1,9 +1,9 @@
-﻿using EngineShell.Application.Interfaces;
+using Presentation.Dialogs;
 using System.Windows;
 
 namespace WpfClient.Services;
 
-public class WpfDialogService : IDialogService
+public sealed class WpfDialogService : IDialogService
 {
     public Task<bool> ShowConfirmationAsync(string message)
     {
@@ -15,15 +15,4 @@ public class WpfDialogService : IDialogService
 
         return Task.FromResult(result == MessageBoxResult.Yes);
     }
-
-    public Task<string?> ShowInputAsync(string prompt)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task ShowMessageAsync(string message)
-    {
-        throw new NotImplementedException();
-    }
 }
-

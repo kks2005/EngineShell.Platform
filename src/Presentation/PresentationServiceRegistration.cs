@@ -1,5 +1,5 @@
-using EngineShell.Application.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Presentation.Navigation;
 using Presentation.ViewModels;
 
 namespace Presentation;
@@ -15,6 +15,7 @@ public static class PresentationServiceRegistration
         services.AddSingleton<GeneralViewModel>();
         services.AddSingleton<ScreensViewModel>();
         services.AddSingleton<RenderEngineViewModel>();
+        services.AddSingleton<INavigationService, NavigationService>();
 
         services.AddSingleton<NavigationItem>(sp =>
             new NavigationItem(

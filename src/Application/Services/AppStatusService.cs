@@ -1,37 +1,41 @@
-﻿using EngineShell.Application.Interfaces;
+using EngineShell.Application.Interfaces;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
-namespace EngineShell.Application.Services
+namespace EngineShell.Application.Services;
+
+public sealed class AppStatusService : IAppStatusService
 {
-    public class AppStatusService : IAppStatusService
+    private string _status = "Ready";
+    private double _progress;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Status
     {
-        private string _status = "Ready";
-        public string Status
-        {
-            get => _status;
-            set
-            {
-                _status = value;
-                
-            }
-        }
-
-        private double _progress;
-        public double Progress
-        {
-            get => _progress;
-            set
-            {
-                _progress = value;
-
-            }
-        }
-
-        public void Log(string message)
-        {
-            // optional: write to file, console, or in-memory list
-        }
+        get => _status;
+        set => SetProperty(ref _status, value);
     }
 
+    public double Progress
+    {
+        get => _progress;
+        set => SetProperty(ref _progress, value);
+    }
 
+    private void SetProperty<T>(
+        ref T field,
+        T value,
+        [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
 
+        field = value;
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(propertyName));
+    }
 }

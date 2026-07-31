@@ -4,6 +4,8 @@ using EngineShell.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Presentation;
+using Presentation.Dialogs;
+using WinUIClient.Services;
 
 namespace WinUIClient;
 
@@ -11,6 +13,7 @@ public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
     private Window? _mainWindow;
+    internal Window? MainWindow => _mainWindow;
 
     public App()
     {
@@ -30,6 +33,7 @@ public partial class App : Application
         var services = new ServiceCollection();
 
         services.AddApplication();
+        services.AddSingleton<IDialogService, WinUiDialogService>();
         services.AddPresentation();
         services.AddSingleton<IProcessingEngine, PInvokeEngineAdapter>();
         services.AddSingleton<ShellView>();

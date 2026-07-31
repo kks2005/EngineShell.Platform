@@ -30,4 +30,24 @@ public sealed class AppStatusServiceTests
         Assert.AreEqual("Processing", sut.Status);
         Assert.AreEqual(42.5, sut.Progress);
     }
+
+    [TestMethod]
+    public void PropertyChanges_AreObservableByAnyClient()
+    {
+        var sut = new AppStatusService();
+        var changedProperties = new List<string?>();
+        sut.PropertyChanged += (_, args) =>
+            changedProperties.Add(args.PropertyName);
+
+        sut.Status = "Processing";
+        sut.Progress = 42.5;
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                nameof(AppStatusService.Status),
+                nameof(AppStatusService.Progress)
+            },
+            changedProperties);
+    }
 }

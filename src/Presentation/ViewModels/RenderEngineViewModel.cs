@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Engine.Contracts;
 using EngineShell.Application.Exceptions;
 using EngineShell.Application.Interfaces;
+using Presentation.Navigation;
 
 namespace Presentation.ViewModels;
 

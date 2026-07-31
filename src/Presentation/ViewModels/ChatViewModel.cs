@@ -92,12 +92,12 @@ public partial class ChatViewModel : ViewModelBase
         {
             Messages.Add(new ChatMessage("System", "Request cancelled."));
         }
-        catch (HttpRequestException)
+        catch (AIServiceUnavailableException)
         {
             Messages.Add(new ChatMessage(
                 "System",
-                "Cannot reach Ollama. Make sure it is running and the "
-                + "configured model is available."));
+                "The AI service is unavailable. Check its local setup "
+                + "and try again."));
         }
         catch (ProcessingOperationException exception)
         {
@@ -105,9 +105,11 @@ public partial class ChatViewModel : ViewModelBase
                 "System",
                 $"{exception.Message} Reference: {exception.OperationId}"));
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            Messages.Add(new ChatMessage("System", exception.Message));
+            Messages.Add(new ChatMessage(
+                "System",
+                "An unexpected chat error occurred."));
         }
         finally
         {

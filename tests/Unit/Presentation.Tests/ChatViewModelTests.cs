@@ -73,6 +73,34 @@ public sealed class ChatViewModelTests
     }
 
     [TestMethod]
+    public async Task SendCommand_WhenAIServiceIsUnavailable_ShowsNeutralMessage()
+    {
+        var chatService = new Mock<IChatService>();
+        chatService
+            .Setup(service => service.SendAsync(
+                "hello",
+                It.IsAny<IProgress<ChatProgress>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AIServiceUnavailableException(
+                new HttpRequestException()));
+        var sut = new ChatViewModel(chatService.Object)
+        {
+            Input = "hello"
+        };
+
+        await sut.SendCommand.ExecuteAsync(null);
+
+        Assert.AreEqual("System", sut.Messages[^1].Speaker);
+        Assert.AreEqual(
+            "The AI service is unavailable. Check its local setup "
+            + "and try again.",
+            sut.Messages[^1].Text);
+        Assert.IsFalse(sut.Messages[^1].Text.Contains(
+            "Ollama",
+            StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
     public async Task Dispose_CancelsActiveChatRequest()
     {
         var started = new TaskCompletionSource<CancellationToken>(

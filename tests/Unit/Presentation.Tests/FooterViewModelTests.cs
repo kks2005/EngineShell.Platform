@@ -1,3 +1,4 @@
+using EngineShell.Application.Services;
 using Presentation.ViewModels;
 
 namespace Presentation.Tests;
@@ -6,19 +7,39 @@ namespace Presentation.Tests;
 public sealed class FooterViewModelTests
 {
     [TestMethod]
-    public void Properties_RaisePropertyChanged()
+    public void ApplicationStatusChanges_UpdateFooterProperties()
     {
-        // Arrange
-        var sut = new FooterViewModel();
+        var status = new AppStatusService();
+        using var sut = new FooterViewModel(status);
         var changedProperties = new List<string?>();
-        sut.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+        sut.PropertyChanged += (_, args) =>
+            changedProperties.Add(args.PropertyName);
 
-        // Act
-        sut.Status = "Processing";
-        sut.Progress = 25;
+        status.Status = "Processing";
+        status.Progress = 25;
 
-        // Assert
-        CollectionAssert.Contains(changedProperties, nameof(FooterViewModel.Status));
-        CollectionAssert.Contains(changedProperties, nameof(FooterViewModel.Progress));
+        Assert.AreEqual("Processing", sut.Status);
+        Assert.AreEqual(25d, sut.Progress);
+        CollectionAssert.Contains(
+            changedProperties,
+            nameof(FooterViewModel.Status));
+        CollectionAssert.Contains(
+            changedProperties,
+            nameof(FooterViewModel.Progress));
+    }
+
+    [TestMethod]
+    public void Dispose_UnsubscribesFromApplicationStatus()
+    {
+        var status = new AppStatusService();
+        var sut = new FooterViewModel(status);
+        var changedProperties = new List<string?>();
+        sut.PropertyChanged += (_, args) =>
+            changedProperties.Add(args.PropertyName);
+
+        sut.Dispose();
+        status.Status = "Changed after disposal";
+
+        Assert.AreEqual(0, changedProperties.Count);
     }
 }

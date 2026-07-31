@@ -5,6 +5,8 @@ using EngineShell.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Presentation;
+using Presentation.Dialogs;
+using Clients.Maui.Services;
 
 namespace Clients.Maui;
 
@@ -26,6 +28,7 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddApplication();
+        builder.Services.AddSingleton<IDialogService, MauiDialogService>();
         builder.Services.AddPresentation();
 
 #if WINDOWS

@@ -1,5 +1,6 @@
 using AI.Adapter.Ollama;
 using EngineShell.Application.AI;
+using EngineShell.Application.Exceptions;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -83,6 +84,28 @@ public sealed class OllamaAIServiceTests
         Assert.IsNotNull(result.ToolCall);
         Assert.AreEqual(AIToolNames.ProcessFile, result.ToolCall.Name);
         Assert.AreEqual("input.dat", result.ToolCall.InputPath);
+    }
+
+    [TestMethod]
+    public async Task PlanAsync_WhenProviderCannotBeReached_MapsNeutralFailure()
+    {
+        var transportFailure = new HttpRequestException(
+            "Provider-specific transport failure.");
+        var handler = new StubHandler(_ => throw transportFailure);
+        using var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:11434/")
+        };
+        var sut = new OllamaAIService(httpClient, "test-model");
+
+        var exception =
+            await Assert.ThrowsExceptionAsync<AIServiceUnavailableException>(
+                () => sut.PlanAsync("hello"));
+
+        Assert.AreSame(transportFailure, exception.InnerException);
+        Assert.IsFalse(exception.Message.Contains(
+            "Ollama",
+            StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class StubHandler(

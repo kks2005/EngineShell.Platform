@@ -1,9 +1,8 @@
-using EngineShell.Application.Interfaces;
-using EngineShell.Application.Models;
+using Presentation.Dialogs;
 
-namespace EngineShell.Application.Services;
+namespace Presentation.Navigation;
 
-public class NavigationService : INavigationService
+public sealed class NavigationService : INavigationService
 {
     private readonly Dictionary<string, object> _pages;
     private readonly IDialogService? _dialogService;

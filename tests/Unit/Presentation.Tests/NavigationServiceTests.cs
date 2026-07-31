@@ -1,9 +1,8 @@
-using EngineShell.Application.Models;
-using EngineShell.Application.Services;
-using EngineShell.Application.Interfaces;
 using Moq;
+using Presentation.Dialogs;
+using Presentation.Navigation;
 
-namespace Application.Tests;
+namespace Presentation.Tests;
 
 [TestClass]
 public sealed class NavigationServiceTests
@@ -11,26 +10,20 @@ public sealed class NavigationServiceTests
     [TestMethod]
     public void Constructor_SetsFirstViewModelAsCurrent()
     {
-        // Arrange
         var firstViewModel = new object();
         var secondViewModel = new object();
-        var items = new[]
-        {
+        var sut = new NavigationService(
+        [
             new NavigationItem("General", "home", firstViewModel),
             new NavigationItem("Screens", "screens", secondViewModel)
-        };
+        ]);
 
-        // Act
-        var sut = new NavigationService(items);
-
-        // Assert
         Assert.AreSame(firstViewModel, sut.CurrentViewModel);
     }
 
     [TestMethod]
     public async Task NavigateTo_WithKnownKey_UpdatesCurrentViewModel()
     {
-        // Arrange
         var firstViewModel = new object();
         var secondViewModel = new object();
         var sut = new NavigationService(
@@ -39,30 +32,25 @@ public sealed class NavigationServiceTests
             new NavigationItem("Screens", "screens", secondViewModel)
         ]);
 
-        // Act
         var navigated = await sut.NavigateToAsync("Screens");
 
-        // Assert
-        Assert.AreSame(secondViewModel, sut.CurrentViewModel);
         Assert.IsTrue(navigated);
+        Assert.AreSame(secondViewModel, sut.CurrentViewModel);
     }
 
     [TestMethod]
     public async Task NavigateTo_WithUnknownKey_KeepsCurrentViewModel()
     {
-        // Arrange
         var currentViewModel = new object();
         var sut = new NavigationService(
         [
             new NavigationItem("General", "home", currentViewModel)
         ]);
 
-        // Act
         var navigated = await sut.NavigateToAsync("Unknown");
 
-        // Assert
-        Assert.AreSame(currentViewModel, sut.CurrentViewModel);
         Assert.IsFalse(navigated);
+        Assert.AreSame(currentViewModel, sut.CurrentViewModel);
     }
 
     [TestMethod]

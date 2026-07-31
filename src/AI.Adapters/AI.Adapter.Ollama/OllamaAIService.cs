@@ -1,5 +1,6 @@
 using EngineShell.Application.AI;
 using EngineShell.Application.Interfaces;
+using EngineShell.Application.Exceptions;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -69,26 +70,45 @@ public sealed class OllamaAIService(
             ],
             ResponseSchema);
 
-        using var response = await httpClient.PostAsJsonAsync(
-            "api/chat",
-            request,
-            cancellationToken);
+        HttpResponseMessage response;
 
-        response.EnsureSuccessStatusCode();
+        try
+        {
+            response = await httpClient.PostAsJsonAsync(
+                "api/chat",
+                request,
+                cancellationToken);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new AIServiceUnavailableException(exception);
+        }
 
-        var chatResponse =
-            await response.Content.ReadFromJsonAsync<OllamaChatResponse>(
-                cancellationToken: cancellationToken)
-            ?? throw new InvalidOperationException(
-                "Ollama returned an empty response.");
+        using (response)
+        {
+            try
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new AIServiceUnavailableException(exception);
+            }
 
-        var plan = JsonSerializer.Deserialize<StructuredPlan>(
-            chatResponse.Message.Content,
-            JsonOptions)
-            ?? throw new InvalidOperationException(
-                "Ollama returned an invalid plan.");
+            var chatResponse =
+                await response.Content.ReadFromJsonAsync<OllamaChatResponse>(
+                    cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "Ollama returned an empty response.");
 
-        return MapPlan(plan);
+            var plan = JsonSerializer.Deserialize<StructuredPlan>(
+                chatResponse.Message.Content,
+                JsonOptions)
+                ?? throw new InvalidOperationException(
+                    "Ollama returned an invalid plan.");
+
+            return MapPlan(plan);
+        }
     }
 
     private static AIPlan MapPlan(StructuredPlan plan)

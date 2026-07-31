@@ -18,14 +18,14 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <TextBlock
-            Text="{Binding Status}"
+            Text="{Binding Status, Mode=OneWay}"
             AutomationProperties.AutomationId="Footer.StatusText" />
         <ProgressBar
             Grid.Row="1"
             Height="4"
             Minimum="0"
             Maximum="100"
-            Value="{Binding Progress}"
+            Value="{Binding Progress, Mode=OneWay}"
             AutomationProperties.AutomationId="Footer.ProgressBar" />
         <StackPanel
             Grid.Column="1"

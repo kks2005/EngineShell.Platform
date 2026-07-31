@@ -1,8 +1,8 @@
 using Engine.Contracts;
 using EngineShell.Application.Interfaces;
-using EngineShell.Application.Models;
 using EngineShell.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Presentation.Navigation;
 using Presentation.ViewModels;
 
 namespace Headless.Tests;

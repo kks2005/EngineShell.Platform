@@ -1,5 +1,5 @@
 using EngineShell.Application.Interfaces;
-using EngineShell.Application.Models;
+using Presentation.Navigation;
 using Moq;
 using Presentation.ViewModels;
 
@@ -15,13 +15,14 @@ public sealed class ShellViewModelTests
         var current = new object();
         var navigation = new Mock<INavigationService>();
         navigation.SetupGet(x => x.CurrentViewModel).Returns(current);
+        var status = Mock.Of<IAppStatusService>();
 
         // Act
         var sut = new ShellViewModel(
             new HeaderViewModel([]),
-            new FooterViewModel(),
+            new FooterViewModel(status),
             navigation.Object,
-            Mock.Of<IAppStatusService>());
+            status);
 
         // Assert
         Assert.AreSame(current, sut.CurrentViewModel);
@@ -47,7 +48,7 @@ public sealed class ShellViewModelTests
             .ReturnsAsync(true);
         var sut = new ShellViewModel(
             header,
-            new FooterViewModel(),
+            new FooterViewModel(status.Object),
             navigation.Object,
             status.Object);
 
@@ -72,6 +73,7 @@ public sealed class ShellViewModelTests
         var item = new NavigationItem("Screens", "screens", new object());
         var header = new HeaderViewModel([]);
         var navigation = new Mock<INavigationService>();
+        var status = Mock.Of<IAppStatusService>();
         navigation.SetupGet(x => x.CurrentViewModel).Returns(initial);
         navigation.Setup(
                 x => x.NavigateToAsync(
@@ -80,9 +82,9 @@ public sealed class ShellViewModelTests
             .ReturnsAsync(true);
         var sut = new ShellViewModel(
             header,
-            new FooterViewModel(),
+            new FooterViewModel(status),
             navigation.Object,
-            Mock.Of<IAppStatusService>());
+            status);
 
         sut.Dispose();
         header.SelectedNavigationItem = item;
@@ -109,6 +111,7 @@ public sealed class ShellViewModelTests
             screensViewModel);
         var header = new HeaderViewModel([general, screens]);
         var navigation = new Mock<INavigationService>();
+        var status = Mock.Of<IAppStatusService>();
         navigation.SetupGet(x => x.CurrentViewModel)
             .Returns(generalViewModel);
         navigation.Setup(
@@ -118,9 +121,9 @@ public sealed class ShellViewModelTests
             .ReturnsAsync(false);
         var sut = new ShellViewModel(
             header,
-            new FooterViewModel(),
+            new FooterViewModel(status),
             navigation.Object,
-            Mock.Of<IAppStatusService>());
+            status);
 
         header.SelectedNavigationItem = screens;
 

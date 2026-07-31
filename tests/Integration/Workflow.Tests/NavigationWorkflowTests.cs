@@ -1,5 +1,5 @@
-using EngineShell.Application.Models;
 using EngineShell.Application.Services;
+using Presentation.Navigation;
 using Presentation.ViewModels;
 
 namespace Integration.Tests;
@@ -21,7 +21,7 @@ public sealed class NavigationWorkflowTests
         var status = new AppStatusService { Progress = 75 };
         var sut = new ShellViewModel(
             header,
-            new FooterViewModel(),
+            new FooterViewModel(status),
             navigation,
             status);
 
@@ -33,5 +33,7 @@ public sealed class NavigationWorkflowTests
         Assert.AreSame(screensViewModel, sut.CurrentViewModel);
         Assert.AreEqual("Loaded Screens", status.Status);
         Assert.AreEqual(0d, status.Progress);
+        Assert.AreEqual("Loaded Screens", sut.Footer.Status);
+        Assert.AreEqual(0d, sut.Footer.Progress);
     }
 }

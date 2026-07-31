@@ -1,4 +1,4 @@
-namespace EngineShell.Application.Interfaces;
+namespace Presentation.Navigation;
 
 public interface INavigationService
 {

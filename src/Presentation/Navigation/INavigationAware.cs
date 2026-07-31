@@ -1,4 +1,4 @@
-namespace EngineShell.Application.Interfaces;
+namespace Presentation.Navigation;
 
 /// <summary>
 /// Allows a view model to participate in navigation when it has active work
