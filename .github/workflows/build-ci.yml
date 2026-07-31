@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build Debug x64 solution
+    name: Restore, compile, and package Debug x64
     runs-on: windows-latest
     timeout-minutes: 30
 

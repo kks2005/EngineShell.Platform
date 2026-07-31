@@ -5,7 +5,7 @@ on:
 
 jobs:
   ui-tests:
-    name: WPF, WinUI, and MAUI UI tests
+    name: Run WPF, WinUI, and MAUI tests with FlaUI
     runs-on: windows-latest
     timeout-minutes: 45
 

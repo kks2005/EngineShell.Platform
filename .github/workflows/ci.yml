@@ -27,22 +27,22 @@ concurrency:
 
 jobs:
   build:
-    name: Build Debug x64 solution
+    name: Build shared binaries
     uses: ./.github/workflows/build-ci.yml
 
   managed:
-    name: Managed tests
+    name: Verify managed tests
     needs: build
     uses: ./.github/workflows/managed-ci.yml
 
-  coverage:
-    name: Managed and native coverage
-    needs: build
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_coverage }}
-    uses: ./.github/workflows/coverage-ci.yml
-
   ui:
-    name: Desktop UI tests
+    name: Validate desktop UI clients
     needs: build
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui }}
     uses: ./.github/workflows/ui-ci.yml
+
+  coverage:
+    name: Measure managed and native coverage
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_coverage }}
+    uses: ./.github/workflows/coverage-ci.yml

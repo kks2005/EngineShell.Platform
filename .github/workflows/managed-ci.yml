@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    name: Test managed workflows
+    name: Run unit, workflow, headless, and CLI tests
     runs-on: windows-latest
     timeout-minutes: 20
 
