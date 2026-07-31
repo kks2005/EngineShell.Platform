@@ -1,0 +1,104 @@
+name: Build CI
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Debug x64 solution
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install .NET 9 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore and build solution
+        shell: powershell
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} `
+            "Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $vswhere -latest `
+            -requires Microsoft.Component.MSBuild `
+            -find "MSBuild\**\Bin\MSBuild.exe" |
+            Select-Object -First 1
+
+          if (-not $msbuild) {
+            throw "Visual Studio MSBuild was not found."
+          }
+
+          & $msbuild ClientAgnostic.sln `
+            /restore `
+            /t:Build `
+            /p:Configuration=Debug `
+            /p:Platform=x64 `
+            /nologo
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Stage and validate CI build
+        shell: pwsh
+        run: |
+          $stagingRoot = Join-Path $PWD "artifacts/ci-build"
+          $projectDirectories = Get-ChildItem "src", "tests" -Recurse `
+            -Include "*.csproj", "*.vcxproj" |
+            ForEach-Object DirectoryName |
+            Sort-Object -Unique
+          $outputDirectories = foreach ($projectDirectory in $projectDirectories) {
+            foreach ($outputName in "bin", "obj") {
+              $outputDirectory = Join-Path $projectDirectory $outputName
+              if (Test-Path -LiteralPath $outputDirectory) {
+                Get-Item -LiteralPath $outputDirectory
+              }
+            }
+          }
+
+          foreach ($directory in $outputDirectories) {
+            $relativePath = [System.IO.Path]::GetRelativePath(
+              $PWD,
+              $directory.FullName)
+            $destination = Join-Path $stagingRoot $relativePath
+            New-Item -ItemType Directory `
+              -Path (Split-Path -Parent $destination) `
+              -Force | Out-Null
+            Copy-Item $directory.FullName $destination -Recurse -Force
+          }
+
+          $requiredFiles = @(
+            "src/Clients/CliClient/bin/Debug/net9.0/CliClient.dll"
+            "src/Clients/WpfClient/bin/x64/Debug/net9.0-windows/WpfClient.exe"
+            "src/Clients/WinUIClient/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WinUIClient.exe"
+            "src/Clients/MauiClient/bin/Debug/net9.0-windows10.0.19041.0/win10-x64/MauiClient.exe"
+            "src/Engine.Native/bin/x64/Debug/Engine.Native.dll"
+            "src/Engine.Native/bin/x64/Debug/Engine.Native.pdb"
+            "tests/Unit/Application.Tests/bin/Debug/net9.0/Application.Tests.dll"
+            "tests/UI/Wpf.UiTests/bin/Debug/net9.0-windows/Wpf.UiTests.dll"
+          )
+
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $stagingRoot $file))) {
+              throw "Required CI build output was not staged: $file"
+            }
+          }
+
+          Write-Host "Validated $($requiredFiles.Count) required build outputs."
+
+      - name: Upload CI build
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-build
+          path: artifacts/ci-build/
+          if-no-files-found: error
+          compression-level: 1
+          retention-days: 1

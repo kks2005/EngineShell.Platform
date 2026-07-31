@@ -22,30 +22,11 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Build Debug x64 solution
-        shell: powershell
-        run: |
-          $vswhere = Join-Path ${env:ProgramFiles(x86)} `
-            "Microsoft Visual Studio\Installer\vswhere.exe"
-          $msbuild = & $vswhere -latest `
-            -requires Microsoft.Component.MSBuild `
-            -find "MSBuild\**\Bin\MSBuild.exe" |
-            Select-Object -First 1
-
-          if (-not $msbuild) {
-            throw "Visual Studio MSBuild was not found."
-          }
-
-          & $msbuild ClientAgnostic.sln `
-            /restore `
-            /t:Build `
-            /p:Configuration=Debug `
-            /p:Platform=x64 `
-            /nologo
-
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
+      - name: Download CI build
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-build
+          path: .
 
       - name: Run desktop UI tests
         shell: pwsh
@@ -80,7 +61,7 @@ jobs:
 
       - name: Upload UI test results and screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-ui-test-results
           path: artifacts/ui-test-results/**

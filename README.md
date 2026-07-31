@@ -280,21 +280,24 @@ The Phase 1 CI pipeline is split by responsibility:
 ```text
 .github/workflows/
 |-- ci.yml           # top-level triggers and pipeline composition
-|-- managed-ci.yml   # reusable managed build and test workflow
+|-- build-ci.yml     # single reusable Debug x64 solution build
+|-- managed-ci.yml   # managed tests using the shared build
 |-- coverage-ci.yml  # reusable managed and native coverage workflow
 `-- ui-ci.yml        # opt-in desktop UI workflow on a hosted Windows VM
 ```
 
-`ci.yml` runs the fast managed workflow on every push and pull request and can
-also be started manually from the GitHub Actions page. `managed-ci.yml`
-restores and builds the UI-independent .NET projects, runs the managed unit,
-workflow, and headless test suites, smoke-tests the CLI, publishes an
-in-browser test report, and uploads the raw TRX test results.
+`ci.yml` restores and builds the complete `Debug|x64` solution once on every
+push and pull request and uploads the short-lived `ci-build` artifact. After a
+successful build, `managed-ci.yml` downloads those exact binaries, runs the
+managed unit, workflow, and headless test suites without rebuilding,
+smoke-tests the CLI, publishes an in-browser test report, and uploads the raw
+TRX test results.
 
 Coverage and desktop UI automation are opt-in choices on a manual `CI` run.
-When selected, `coverage-ci.yml` runs the existing `coverage.ps1 -SkipUi`
-workflow, publishes its text summary on the run page, and uploads the complete
-non-UI HTML and raw coverage artifacts.
+When selected, `coverage-ci.yml` and `ui-ci.yml` download the same `ci-build`
+artifact and run in parallel with the managed tests. Coverage calls the existing
+`coverage.ps1 -SkipBuild -SkipUi` workflow, publishes its text summary on the
+run page, and uploads the complete non-UI HTML and raw coverage artifacts.
 
 This keeps repository-wide execution policy in one place while allowing each
 specialized workflow to remain independently readable and reusable.

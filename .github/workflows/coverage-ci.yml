@@ -22,10 +22,16 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      - name: Download CI build
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-build
+          path: .
+
       - name: Run non-UI coverage
         shell: powershell
         run: |
-          .\scripts\coverage.ps1 -SkipUi
+          .\scripts\coverage.ps1 -SkipBuild -SkipUi
 
       - name: Publish coverage summary
         if: ${{ !cancelled() }}
@@ -57,7 +63,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: non-ui-coverage-report
           path: .coverage/runs/**

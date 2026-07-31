@@ -4,8 +4,8 @@ on:
   workflow_call:
 
 jobs:
-  build-and-test:
-    name: Build and test managed workflows
+  test:
+    name: Test managed workflows
     runs-on: windows-latest
     timeout-minutes: 20
 
@@ -22,43 +22,11 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Restore managed test projects
-        shell: pwsh
-        run: |
-          $projects = @(
-            "tests/Unit/Application.Tests/Application.Tests.csproj"
-            "tests/Unit/Presentation.Tests/Presentation.Tests.csproj"
-            "tests/Unit/CliClient.Tests/CliClient.Tests.csproj"
-            "tests/Integration/Workflow.Tests/Integration.Tests.csproj"
-            "tests/Headless/Headless.Tests.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet restore $project
-            if ($LASTEXITCODE -ne 0) {
-              exit $LASTEXITCODE
-            }
-          }
-
-      - name: Build managed architecture
-        shell: pwsh
-        run: |
-          $projects = @(
-            "src/Application/Application.csproj"
-            "src/Presentation/Presentation.csproj"
-            "src/Engine.Adapters/Engine.Adapter.Simulator/Engine.Adapter.Simulator.csproj"
-            "src/Clients/CliClient/CliClient.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet build $project `
-              --configuration Release `
-              --no-restore
-
-            if ($LASTEXITCODE -ne 0) {
-              exit $LASTEXITCODE
-            }
-          }
+      - name: Download CI build
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-build
+          path: .
 
       - name: Run managed tests
         shell: pwsh
@@ -73,8 +41,8 @@ jobs:
 
           foreach ($entry in $projects.GetEnumerator()) {
             dotnet test $entry.Value `
-              --configuration Release `
-              --no-restore `
+              --configuration Debug `
+              --no-build `
               --logger "trx;LogFileName=$($entry.Key).trx" `
               --results-directory "artifacts/test-results/$($entry.Key)"
 
@@ -88,7 +56,7 @@ jobs:
         run: |
           dotnet run `
             --project src/Clients/CliClient/CliClient.csproj `
-            --configuration Release `
+            --configuration Debug `
             --no-build `
             -- process ci-input.dat --output ci-output.dat
 
@@ -104,7 +72,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: managed-test-results
           path: artifacts/test-results/**/*.trx
