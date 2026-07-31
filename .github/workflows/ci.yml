@@ -18,3 +18,7 @@ jobs:
   managed:
     name: Managed build and tests
     uses: ./.github/workflows/managed-ci.yml
+
+  coverage:
+    name: Managed and native coverage
+    uses: ./.github/workflows/coverage-ci.yml

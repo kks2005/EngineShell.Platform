@@ -279,22 +279,24 @@ The Phase 1 CI pipeline is split by responsibility:
 
 ```text
 .github/workflows/
-|-- ci.yml          # top-level triggers and pipeline composition
-`-- managed-ci.yml  # reusable managed build and test workflow
+|-- ci.yml           # top-level triggers and pipeline composition
+|-- managed-ci.yml   # reusable managed build and test workflow
+`-- coverage-ci.yml  # reusable managed and native coverage workflow
 ```
 
 `ci.yml` runs on every push and pull request and can also be started manually
 from the GitHub Actions page. It calls `managed-ci.yml`, which restores and
 builds the UI-independent .NET projects, runs the managed unit, workflow, and
 headless test suites, smoke-tests the CLI, publishes an in-browser test report,
-and uploads the raw TRX test results.
+and uploads the raw TRX test results. In parallel, `coverage-ci.yml` runs the
+existing `coverage.ps1 -SkipUi` workflow, publishes its text summary on the run
+page, and uploads the complete non-UI HTML and raw coverage artifacts.
 
 This keeps repository-wide execution policy in one place while allowing future
-native, coverage, and UI automation workflows to be composed as additional
-top-level jobs.
+UI automation workflows to be composed as additional top-level jobs.
 
-Native x64 builds, adapter integration, coverage publication, and desktop UI
-automation remain separate future workflow phases.
+Desktop UI automation and its interactive coverage remain a separate future
+workflow phase because they require an unlocked Windows desktop.
 
 Build the x64 solution before running the native adapter suites:
 
