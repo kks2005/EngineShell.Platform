@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_ui:
+        description: Run desktop UI tests on a GitHub-hosted Windows VM
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,3 +28,8 @@ jobs:
   coverage:
     name: Managed and native coverage
     uses: ./.github/workflows/coverage-ci.yml
+
+  ui:
+    name: Desktop UI tests
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui }}
+    uses: ./.github/workflows/ui-ci.yml

@@ -281,7 +281,8 @@ The Phase 1 CI pipeline is split by responsibility:
 .github/workflows/
 |-- ci.yml           # top-level triggers and pipeline composition
 |-- managed-ci.yml   # reusable managed build and test workflow
-`-- coverage-ci.yml  # reusable managed and native coverage workflow
+|-- coverage-ci.yml  # reusable managed and native coverage workflow
+`-- ui-ci.yml        # opt-in desktop UI workflow on a hosted Windows VM
 ```
 
 `ci.yml` runs on every push and pull request and can also be started manually
@@ -292,11 +293,14 @@ and uploads the raw TRX test results. In parallel, `coverage-ci.yml` runs the
 existing `coverage.ps1 -SkipUi` workflow, publishes its text summary on the run
 page, and uploads the complete non-UI HTML and raw coverage artifacts.
 
-This keeps repository-wide execution policy in one place while allowing future
-UI automation workflows to be composed as additional top-level jobs.
+This keeps repository-wide execution policy in one place while allowing each
+specialized workflow to remain independently readable and reusable.
 
-Desktop UI automation and its interactive coverage remain a separate future
-workflow phase because they require an unlocked Windows desktop.
+Desktop UI automation is available as an opt-in manual CI job on GitHub's
+disposable `windows-latest` VM. Select **Run desktop UI tests** when starting
+`CI` from the GitHub Actions page. Keeping this job opt-in lets the repository
+verify FlaUI compatibility with the hosted desktop environment without adding
+UI automation time and variability to every push.
 
 Build the x64 solution before running the native adapter suites:
 

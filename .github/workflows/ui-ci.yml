@@ -1,0 +1,89 @@
+name: Desktop UI CI Using FlaUI
+
+on:
+  workflow_call:
+
+jobs:
+  ui-tests:
+    name: WPF, WinUI, and MAUI UI tests
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install .NET 9 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build Debug x64 solution
+        shell: powershell
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} `
+            "Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $vswhere -latest `
+            -requires Microsoft.Component.MSBuild `
+            -find "MSBuild\**\Bin\MSBuild.exe" |
+            Select-Object -First 1
+
+          if (-not $msbuild) {
+            throw "Visual Studio MSBuild was not found."
+          }
+
+          & $msbuild ClientAgnostic.sln `
+            /restore `
+            /t:Build `
+            /p:Configuration=Debug `
+            /p:Platform=x64 `
+            /nologo
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Run desktop UI tests
+        shell: pwsh
+        run: |
+          $projects = [ordered]@{
+            "wpf-ui" = "tests/UI/Wpf.UiTests/Wpf.UiTests.csproj"
+            "winui-ui" = "tests/UI/WinUI.UiTests/WinUI.UiTests.csproj"
+            "maui-ui" = "tests/UI/Maui.UiTests/Maui.UiTests.csproj"
+          }
+
+          foreach ($entry in $projects.GetEnumerator()) {
+            dotnet test $entry.Value `
+              --configuration Debug `
+              --no-build `
+              -p:Platform=x64 `
+              --logger "trx;LogFileName=$($entry.Key).trx" `
+              --results-directory "artifacts/ui-test-results/$($entry.Key)"
+
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+      - name: Publish UI test report
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Desktop UI test results
+          path: artifacts/ui-test-results/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+          fail-on-empty: false
+
+      - name: Upload UI test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-ui-test-results
+          path: artifacts/ui-test-results/**
+          if-no-files-found: warn
+          retention-days: 14
