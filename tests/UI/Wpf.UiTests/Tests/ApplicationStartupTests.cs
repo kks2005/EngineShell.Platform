@@ -20,11 +20,14 @@ public sealed class ApplicationStartupTests : UiTestBase
         Assert.IsTrue(App.MainWindow.IsAvailable);
         Assert.IsNotNull(shell.Header);
 
+        // add some delay to allow for screenshots and video capture
+        Thread.Sleep(2000);
+
         var forceFailure = string.Equals(
             Environment.GetEnvironmentVariable("UI_TEST_FORCE_FAILURE"),
-            "true",
+            "false",
             StringComparison.OrdinalIgnoreCase);
-        Assert.IsFalse(
+        Assert.IsTrue(
             forceFailure,
             "Intentional failure used to verify UI screenshots and video.");
     }
